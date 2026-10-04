@@ -233,25 +233,39 @@
   white-space: nowrap;
 }
 
-/* Logout drops down only while the user pill is hovered or focused. */
+/* Logout rolls in from the right and slightly overlaps the name pill. */
 .rb-user__menu {
   position: absolute;
-  top: 100%;
+  top: 50%;
   right: 0;
   z-index: 50;
   display: flex;
-  padding-top: 10px;
+  transform: translate(120%, -50%);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-4px);
-  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+  transition: transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 0.24s ease, visibility 0.32s;
 }
 
 .rb-user:hover .rb-user__menu,
 .rb-user:focus-within .rb-user__menu {
+  transform: translate(-10px, -50%);
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+}
+
+/* While the logout button overlaps it, the name pill blurs slightly. */
+.rb-user__name,
+.rb-user__provider {
+  transition: filter 0.24s ease, opacity 0.24s ease;
+}
+
+.rb-user:hover .rb-user__name,
+.rb-user:hover .rb-user__provider,
+.rb-user:focus-within .rb-user__name,
+.rb-user:focus-within .rb-user__provider {
+  filter: blur(2px);
+  opacity: 0.4;
 }
 
 .rb-user__out {
@@ -274,12 +288,8 @@
 }
 
 .rb-user__out:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
   box-shadow: var(--shadow);
-}
-
-.rb-root[data-variant="canvas"] .rb-user__menu {
-  padding-top: 12px;
 }
 
 .rb-root[data-variant="canvas"] .rb-user__out {
