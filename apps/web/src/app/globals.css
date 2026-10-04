@@ -1,0 +1,8 @@
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; font-family: "Manrope", system-ui, sans-serif; }
+button, textarea, input, select { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), summary { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+::selection { background: #b9c9ff; color: #0a1a33; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
