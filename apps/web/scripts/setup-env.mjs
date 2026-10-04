@@ -7,7 +7,12 @@ if (existsSync(target)) {
   console.log("Existing .env.local preserved. No credentials were overwritten.");
 } else {
   const template = readFileSync(new URL("../.env.example", import.meta.url), "utf8");
-  const value = template.replace("SESSION_SECRET=\n", `SESSION_SECRET=${randomBytes(32).toString("base64url")}\n`);
+  const secret = randomBytes(32).toString("base64url");
+  // Match the line regardless of LF/CRLF so Windows checkouts also get a secret.
+  const value = template.replace(/^SESSION_SECRET=.*$/m, `SESSION_SECRET=${secret}`);
+  if (!value.includes(`SESSION_SECRET=${secret}`)) {
+    throw new Error(".env.example is missing the SESSION_SECRET placeholder.");
+  }
   writeFileSync(target, value, { flag: "wx", mode: 0o600 });
   console.log("Created private local configuration with a random session secret.");
 }
