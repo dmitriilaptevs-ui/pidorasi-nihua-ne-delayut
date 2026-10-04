@@ -116,7 +116,7 @@ export function Experience(props: ExperienceProps) {
                 <span className="rb-user__provider">
                   {PROVIDER_LABEL[viewer.provider]}
                 </span>
-                <button type="button" className="rb-ghost" onClick={onSignOut}>
+                <button type="button" className="rb-user__out" onClick={onSignOut}>
                   Выйти
                 </button>
               </div>
@@ -129,13 +129,15 @@ export function Experience(props: ExperienceProps) {
                 Войти
               </button>
             )}
-            <button
-              type="button"
-              className="rb-cta rb-cta--sm"
-              onClick={handleStart}
-            >
-              Начать бесплатно
-            </button>
+            {!viewer ? (
+              <button
+                type="button"
+                className="rb-cta rb-cta--sm"
+                onClick={handleStart}
+              >
+                Начать бесплатно
+              </button>
+            ) : null}
           </div>
         </div>
       </header>
@@ -156,7 +158,7 @@ export function Experience(props: ExperienceProps) {
                 Войдите через привычный аккаунт, выберите бесплатную модель и
                 задайте вопрос. Без карты и лишних шагов.
               </p>
-              <PrimaryCta onClick={handleStart} />
+              {!viewer ? <PrimaryCta onClick={handleStart} /> : null}
             </div>
             <div className="rb-bento__tile rb-bento__tile--a">
               <span className="rb-bento__k">Стоимость</span>

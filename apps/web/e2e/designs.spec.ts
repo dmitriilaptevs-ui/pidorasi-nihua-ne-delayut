@@ -103,3 +103,17 @@ test("removed designs are gone: routes 404 and no design switcher", async ({ pag
   await page.goto("/canvas");
   await expect(page.locator(".rb-selector")).toHaveCount(0);
 });
+
+test("signed-in header hides the primary CTA and keeps a compact logout", async ({ page }) => {
+  await fixtureApi(page, true);
+  await page.goto("/canvas");
+  // The "Начать бесплатно" CTA is not shown once a session exists.
+  await expect(page.getByRole("button", { name: "Начать бесплатно", exact: true })).toHaveCount(0);
+  // Logout lives inside the user pill and uses the compact style.
+  // On very narrow screens the whole user pill is hidden by design, so assert
+  // the element and its class rather than visibility.
+  const logout = page.locator(".rb-user button");
+  await expect(logout).toHaveText("Выйти");
+  await expect(logout).toHaveClass(/rb-user__out/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
