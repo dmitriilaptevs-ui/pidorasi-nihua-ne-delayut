@@ -1,0 +1,46 @@
+# Local credentials and environment files (examples must contain placeholders only)
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+/secrets/
+
+# Local data, logs and backups — never commit production/user data
+*.log
+*.sql.gz
+*.dump
+*.dump.gz
+/backups/
+/dumps/
+/data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / Next.js
+node_modules/
+.next/
+.turbo/
+coverage/
+/dist/
+/out/
+*.tsbuildinfo
+
+# Local tooling
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
