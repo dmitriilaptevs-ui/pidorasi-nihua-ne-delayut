@@ -1,0 +1,7 @@
+# Container and shell files must keep LF line endings; CRLF in a Dockerfile can
+# break backslash line-continuations and shell commands in the build.
+Dockerfile text eol=lf
+**/Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+**/docker-compose.yml text eol=lf
+*.sh text eol=lf

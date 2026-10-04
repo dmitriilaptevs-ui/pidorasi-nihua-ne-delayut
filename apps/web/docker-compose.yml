@@ -1,0 +1,24 @@
+# Local container for the rubai onboarding web.
+#
+#   1. cp .env.example .env.local && edit it (npm run setup also works)
+#   2. docker compose up --build
+#   3. open http://localhost/canvas
+#
+# The image is built from the local tree; secrets come from .env.local at
+# runtime and are never baked into the image. Host port 80 is required because
+# VK ID allows localhost apps only on the default ports.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rubai-onboarding-web:local
+    ports:
+      - "80:3001"
+    env_file:
+      - .env.local
+    environment:
+      APP_ORIGIN: http://localhost
+      HOSTNAME: 0.0.0.0
+      PORT: "3001"
+    restart: unless-stopped

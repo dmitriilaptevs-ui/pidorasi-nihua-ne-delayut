@@ -1,0 +1,19 @@
+node_modules
+.next
+.git
+.gitignore
+
+# Never bake local secrets or environment files into the image.
+.env
+.env.*
+!.env.example
+
+# Local dev/test artifacts.
+test-results
+playwright-report
+coverage
+*.log
+AGENTS.md
+CLAUDE.md
+Dockerfile
+.dockerignore
