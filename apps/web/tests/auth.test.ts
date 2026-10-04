@@ -94,7 +94,7 @@ function cookieValue(response: Response, name: string): string {
   throw new Error(`missing cookie ${name}`);
 }
 
-async function startVk(variant = "flow"): Promise<{ state: string; bind: string; response: Response }> {
+async function startVk(variant = "canvas"): Promise<{ state: string; bind: string; response: Response }> {
   const response = await startPOST(startRequest("vk", variant));
   const { url } = (await response.clone().json()) as { url: string };
   const state = new URL(url).searchParams.get("state") ?? "";
@@ -196,14 +196,14 @@ describe("provider readiness", () => {
 
 describe("start route", () => {
   it("rejects missing and foreign Origin on mutations", async () => {
-    const missing = await startPOST(startRequest("vk", "flow", null));
+    const missing = await startPOST(startRequest("vk", "canvas", null));
     expect(missing.status).toBe(403);
     expect((await missing.json()).error.code).toBe("origin");
 
-    const foreign = await startPOST(startRequest("vk", "flow", "https://evil.example"));
+    const foreign = await startPOST(startRequest("vk", "canvas", "https://evil.example"));
     expect(foreign.status).toBe(403);
 
-    const ok = await startPOST(startRequest("vk", "flow"));
+    const ok = await startPOST(startRequest("vk", "canvas"));
     expect(ok.status).toBe(200);
   });
 
@@ -216,13 +216,13 @@ describe("start route", () => {
       "http://LOCALHOST",
     ];
     for (const origin of garbage) {
-      const response = await startPOST(startRequest("vk", "flow", origin));
+      const response = await startPOST(startRequest("vk", "canvas", origin));
       expect(response.status).toBe(403);
     }
   });
 
   it("validates provider and variant allowlists", async () => {
-    for (const [provider, variant] of [["github", "flow"], ["vk", "nope"]]) {
+    for (const [provider, variant] of [["github", "canvas"], ["vk", "nope"], ["vk", "flow"], ["vk", "pulse"]]) {
       const response = await startPOST(startRequest(provider, variant));
       expect(response.status).toBe(400);
       expect((await response.json()).error.code).toBe("invalid_request");
@@ -262,7 +262,7 @@ describe("start route", () => {
   });
 
   it("returns a Yandex authorize URL with login:info scope", async () => {
-    const response = await startPOST(startRequest("yandex", "pulse"));
+    const response = await startPOST(startRequest("yandex", "canvas"));
     const { url } = (await response.json()) as { url: string };
     const parsed = new URL(url);
     expect(parsed.origin).toBe("https://oauth.yandex.ru");
@@ -275,7 +275,7 @@ describe("start route", () => {
   });
 
   it("sets an HttpOnly SameSite=Lax bind cookie", async () => {
-    const response = await startPOST(startRequest("vk", "flow"));
+    const response = await startPOST(startRequest("vk", "canvas"));
     const cookie = response.headers.getSetCookie().find((c) => c.startsWith(BIND_COOKIE));
     expect(cookie).toBeTruthy();
     expect(cookie).toContain("HttpOnly");
@@ -292,7 +292,7 @@ describe("start route", () => {
   });
 
   it("issues exactly 43-char base64url state and binding tokens", async () => {
-    const response = await startPOST(startRequest("vk", "flow"));
+    const response = await startPOST(startRequest("vk", "canvas"));
     const { url } = (await response.json()) as { url: string };
     const state = new URL(url).searchParams.get("state") ?? "";
     expect(state).toMatch(/^[A-Za-z0-9_-]{43}$/);
@@ -332,12 +332,12 @@ describe("start route", () => {
 
   it("throttles a single local bucket regardless of forwarded headers", async () => {
     for (let index = 0; index < 30; index += 1) {
-      const request = startRequest("vk", "flow");
+      const request = startRequest("vk", "canvas");
       request.headers.set("x-forwarded-for", `10.0.0.${index}`);
       const response = await startPOST(request);
       expect(response.status).toBe(200);
     }
-    const limited = startRequest("vk", "flow");
+    const limited = startRequest("vk", "canvas");
     limited.headers.set("x-forwarded-for", "203.0.113.7");
     const response = await startPOST(limited);
     expect(response.status).toBe(429);
@@ -347,7 +347,7 @@ describe("start route", () => {
 
 describe("VK callback", () => {
   it("exchanges a code, calls user_info and creates a session", async () => {
-    const { state, bind } = await startVk("pulse");
+    const { state, bind } = await startVk("canvas");
     const fetchMock = mockFetchSequence([
       { body: { access_token: "vk-token", user_id: 42, state } },
       { body: { user: { user_id: 42, first_name: "Иван", last_name: "Петров" } } },
@@ -360,7 +360,7 @@ describe("VK callback", () => {
     );
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("http://localhost/pulse#workspace");
+    expect(response.headers.get("location")).toBe("http://localhost/canvas#workspace");
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
     expect(response.headers.get("content-security-policy")).toBe("default-src 'none'");
@@ -497,7 +497,7 @@ describe("VK callback", () => {
   it("maps provider denials to a safe code", async () => {
     const { state, bind } = await startVk();
     const response = await callCallback("vk", [["state", state], ["error", "access_denied"]], bind);
-    expect(response.headers.get("location")).toBe("http://localhost/flow?auth_error=denied#workspace");
+    expect(response.headers.get("location")).toBe("http://localhost/canvas?auth_error=denied#workspace");
   });
 
   it("maps token state mismatch and user id mismatch safely", async () => {
@@ -604,7 +604,7 @@ describe("Yandex callback", () => {
   });
 
   it("rejects a mismatched Yandex client_id", async () => {
-    const start = await startPOST(startRequest("yandex", "flow"));
+    const start = await startPOST(startRequest("yandex", "canvas"));
     const { url } = (await start.json()) as { url: string };
     const state = new URL(url).searchParams.get("state") ?? "";
     const bind = cookieValue(start, BIND_COOKIE);
@@ -617,7 +617,7 @@ describe("Yandex callback", () => {
   });
 
   it("requires the returned Yandex client_id", async () => {
-    const start = await startPOST(startRequest("yandex", "flow"));
+    const start = await startPOST(startRequest("yandex", "canvas"));
     const { url } = (await start.json()) as { url: string };
     const state = new URL(url).searchParams.get("state") ?? "";
     const bind = cookieValue(start, BIND_COOKIE);
@@ -630,7 +630,7 @@ describe("Yandex callback", () => {
   });
 
   it("requires the stable Yandex id and never falls back to login", async () => {
-    const start = await startPOST(startRequest("yandex", "flow"));
+    const start = await startPOST(startRequest("yandex", "canvas"));
     const { url } = (await start.json()) as { url: string };
     const state = new URL(url).searchParams.get("state") ?? "";
     const bind = cookieValue(start, BIND_COOKIE);

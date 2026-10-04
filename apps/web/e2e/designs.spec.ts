@@ -18,7 +18,7 @@ async function fixtureApi(page: Page, signedIn = false) {
   });
 }
 
-for (const variant of ["flow", "pulse", "canvas"] as const) {
+for (const variant of ["canvas"] as const) {
   test(`${variant}: landing, real controls, model selection and keyboard-safe login`, async ({ page }) => {
     await fixtureApi(page);
     await page.goto(`/${variant}`);
@@ -78,18 +78,28 @@ for (const variant of ["flow", "pulse", "canvas"] as const) {
 
 test("callback errors are visible immediately, not hidden behind another click", async ({ page }) => {
   await fixtureApi(page);
-  await page.goto("/pulse?auth_error=state#workspace");
+  await page.goto("/canvas?auth_error=state#workspace");
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("dialog").getByRole("alert")).toContainText("Начните вход заново");
-  await expect(page).toHaveURL(/\/pulse#workspace$/);
+  await expect(page).toHaveURL(/\/canvas#workspace$/);
 });
 
 test("missing configuration is explicit and never turns into fake login", async ({ page }) => {
   await fixtureApi(page);
   await page.route("**/api/status", (route) => route.fulfill({ json: { providers: { vk: false, yandex: false }, inference: false } }));
-  await page.goto("/flow");
+  await page.goto("/canvas");
   await page.locator(".rb-cta--xl").click();
   await expect(page.getByRole("button", { name: /Продолжить с VK ID/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Продолжить с Яндекс ID/ })).toBeDisabled();
   await expect(page.getByRole("dialog")).toContainText(".env.local");
+});
+
+test("removed designs are gone: routes 404 and no design switcher", async ({ page }) => {
+  await fixtureApi(page);
+  for (const path of ["/flow", "/pulse"]) {
+    const response = await page.goto(path);
+    expect(response?.status()).toBe(404);
+  }
+  await page.goto("/canvas");
+  await expect(page.locator(".rb-selector")).toHaveCount(0);
 });
