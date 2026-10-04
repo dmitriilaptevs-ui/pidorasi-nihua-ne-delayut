@@ -1,5 +1,5 @@
 /* ==========================================================================
-   rubai onboarding lab — three designs: flow / pulse / canvas
+   rubai onboarding lab — canvas design
    Pure CSS artwork. No remote images or font loads.
    ========================================================================== */
 
@@ -68,50 +68,6 @@
 }
 
 /* ---------------------------------------------------------------- variants */
-
-.rb-root[data-variant="flow"] {
-  --bg: #f5f8fd;
-  --bg-soft: #eaf1fb;
-  --surface: #ffffff;
-  --surface-2: #eef3fb;
-  --ink: #0a1a33;
-  --muted: #4d5f79;
-  --line: #d7e1f0;
-  --accent: #1f4fd8;
-  --accent-2: #0a1a33;
-  --accent-ink: #ffffff;
-  --ring: rgba(31, 79, 216, 0.45);
-  --card-border: 1px solid var(--line);
-  --shadow: 0 24px 60px -34px rgba(10, 26, 51, 0.55);
-  --shadow-soft: 0 10px 30px -22px rgba(10, 26, 51, 0.5);
-  --radius: 16px;
-  background:
-    radial-gradient(1100px 620px at 108% -8%, #dfeafc 0%, transparent 60%),
-    radial-gradient(760px 520px at -8% 118%, #e6eefc 0%, transparent 62%),
-    var(--bg);
-}
-
-.rb-root[data-variant="pulse"] {
-  --bg: #07070c;
-  --bg-soft: #0e0d18;
-  --surface: #100f1c;
-  --surface-2: #171528;
-  --ink: #f3f1ff;
-  --muted: #a7a2c9;
-  --line: rgba(255, 255, 255, 0.13);
-  --accent: #8b5cf6;
-  --accent-2: #22d3ee;
-  --accent-ink: #0a0a12;
-  --ring: rgba(139, 92, 246, 0.6);
-  --card-border: 1px solid var(--line);
-  --shadow: 0 40px 90px -50px rgba(139, 92, 246, 0.7);
-  --shadow-soft: 0 20px 50px -40px rgba(34, 211, 238, 0.5);
-  --radius: 18px;
-  background:
-    radial-gradient(900px 600px at 50% -10%, rgba(139, 92, 246, 0.28) 0%, transparent 62%),
-    radial-gradient(700px 520px at 90% 105%, rgba(34, 211, 238, 0.16) 0%, transparent 64%),
-    var(--bg);
-}
 
 .rb-root[data-variant="canvas"] {
   --bg: #f1e8d3;
@@ -324,17 +280,6 @@
   border-radius: 16px;
 }
 
-.rb-root[data-variant="pulse"] .rb-cta {
-  background: linear-gradient(120deg, var(--accent), #6d3ff0 60%, var(--accent-2) 140%);
-  color: #0a0a12;
-  border-radius: 999px;
-}
-
-.rb-root[data-variant="pulse"] .rb-cta--sm,
-.rb-root[data-variant="pulse"] .rb-cta--xl {
-  border-radius: 999px;
-}
-
 .rb-root[data-variant="canvas"] .rb-cta {
   border: 3px solid var(--line);
   border-radius: 0;
@@ -394,53 +339,6 @@
   border-bottom-color: var(--accent);
 }
 
-/* -------------------------------------------------------------- selector */
-
-.rb-selector {
-  position: fixed;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 6px 5px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 18px 40px -26px rgba(0, 0, 0, 0.6);
-  font-size: 12px;
-}
-
-.rb-selector__hint {
-  color: var(--muted);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 10px;
-  margin-right: 4px;
-}
-
-.rb-selector__item {
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-weight: 700;
-  color: var(--muted);
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.rb-selector__item:hover {
-  color: var(--ink);
-  background: var(--surface-2);
-}
-
-.rb-selector__item[aria-current="page"] {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
 /* -------------------------------------------------------------------- hero */
 
 .rb-hero {
@@ -461,10 +359,6 @@
   margin-bottom: 18px;
 }
 
-.rb-eyebrow--center {
-  justify-content: center;
-}
-
 .rb-h1 {
   font-family: var(--font-head);
   font-weight: 600;
@@ -472,12 +366,6 @@
   line-height: 1.03;
   letter-spacing: -0.03em;
   overflow-wrap: anywhere;
-}
-
-.rb-h1--xl {
-  font-size: clamp(44px, 7.4vw, 104px);
-  line-height: 0.98;
-  letter-spacing: -0.045em;
 }
 
 .rb-accent {
@@ -499,241 +387,12 @@
   max-width: 58ch;
 }
 
-.rb-lede--center {
-  margin-left: auto;
-  margin-right: auto;
-  text-align: center;
-}
-
 .rb-cta-row {
   margin-top: 34px;
   display: flex;
   align-items: center;
   gap: 18px;
   flex-wrap: wrap;
-}
-
-.rb-cta-row--center {
-  justify-content: center;
-}
-
-.rb-points {
-  margin-top: 34px;
-  display: grid;
-  gap: 12px;
-}
-
-.rb-points li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--muted);
-  font-weight: 600;
-  font-size: 15px;
-}
-
-.rb-points svg {
-  color: var(--accent);
-  flex: none;
-}
-
-/* ------------------------------------------------------------ hero: flow */
-
-.rb-hero--flow {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: clamp(32px, 5vw, 72px);
-  align-items: center;
-}
-
-.rb-art-flow {
-  position: relative;
-  min-height: 440px;
-}
-
-.rb-sculpt {
-  position: absolute;
-  border: var(--card-border);
-  background: var(--surface);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.rb-sculpt--a {
-  top: 0;
-  left: 6%;
-  width: 72%;
-  transform: rotate(-3deg);
-  z-index: 3;
-}
-
-.rb-sculpt--b {
-  top: 34%;
-  right: 0;
-  width: 62%;
-  transform: rotate(3.5deg);
-  z-index: 2;
-}
-
-.rb-sculpt--c {
-  bottom: 0;
-  left: 0;
-  width: 66%;
-  transform: rotate(-1.5deg);
-  z-index: 1;
-}
-
-.rb-chip {
-  align-self: flex-start;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--accent);
-}
-
-.rb-sculpt__row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.rb-sculpt__pill {
-  padding: 9px 14px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.rb-sculpt__bar {
-  height: 12px;
-  width: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 25%, var(--surface-2)));
-}
-
-.rb-sculpt__bar--mid {
-  width: 78%;
-}
-
-.rb-sculpt__bar--short {
-  width: 52%;
-}
-
-.rb-sculpt__line {
-  height: 10px;
-  width: 100%;
-  border-radius: 4px;
-  background: var(--surface-2);
-}
-
-.rb-sculpt__line--short {
-  width: 62%;
-}
-
-/* ----------------------------------------------------------- hero: pulse */
-
-.rb-hero--pulse {
-  position: relative;
-  text-align: center;
-  padding-top: 96px;
-  padding-bottom: 72px;
-  overflow: hidden;
-}
-
-.rb-hero--pulse .rb-h1,
-.rb-hero--pulse .rb-lede {
-  position: relative;
-  z-index: 2;
-}
-
-.rb-orbit {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(760px, 92vw);
-  aspect-ratio: 1;
-  transform: translate(-50%, -58%);
-  z-index: 0;
-  pointer-events: none;
-}
-
-.rb-orbit__ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 1px solid rgba(139, 92, 246, 0.35);
-}
-
-.rb-orbit__ring--2 {
-  inset: 14%;
-  border-color: rgba(34, 211, 238, 0.28);
-}
-
-.rb-orbit__ring--3 {
-  inset: 29%;
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-.rb-orbit__core {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 26%;
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, rgba(139, 92, 246, 0.7), rgba(34, 211, 238, 0.25) 60%, transparent 72%);
-  filter: blur(6px);
-}
-
-.rb-path {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 14px;
-  max-width: 680px;
-  margin: 48px auto 0;
-  padding: 0;
-}
-
-.rb-path__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 18px;
-  border: var(--card-border);
-  border-radius: 999px;
-  background: rgba(16, 15, 28, 0.86);
-  box-shadow: var(--shadow-soft);
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.rb-path__num {
-  display: inline-grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: linear-gradient(120deg, var(--accent), var(--accent-2));
-  color: #0a0a12;
-  font-family: var(--font-head);
-  font-size: 13px;
-  font-weight: 700;
-  flex: none;
-}
-
-.rb-path__label {
-  white-space: nowrap;
 }
 
 /* ---------------------------------------------------------- hero: canvas */
@@ -1538,75 +1197,9 @@
 
 /* ------------------------------------------------------------- animations */
 
-@media (prefers-reduced-motion: no-preference) {
-  .rb-sculpt--a {
-    animation: rb-float-a 7s ease-in-out infinite;
-  }
-  .rb-sculpt--b {
-    animation: rb-float-b 8.5s ease-in-out infinite;
-  }
-  .rb-sculpt--c {
-    animation: rb-float-a 9.5s ease-in-out infinite reverse;
-  }
-  .rb-orbit__ring--1 {
-    animation: rb-orbit 26s linear infinite;
-  }
-  .rb-orbit__ring--2 {
-    animation: rb-orbit 18s linear infinite reverse;
-  }
-  .rb-orbit__core {
-    animation: rb-pulse 5s ease-in-out infinite;
-  }
-}
-
-@keyframes rb-float-a {
-  0%,
-  100% {
-    transform: rotate(-3deg) translateY(0);
-  }
-  50% {
-    transform: rotate(-2deg) translateY(-12px);
-  }
-}
-
-@keyframes rb-float-b {
-  0%,
-  100% {
-    transform: rotate(3.5deg) translateY(0);
-  }
-  50% {
-    transform: rotate(4deg) translateY(10px);
-  }
-}
-
-@keyframes rb-orbit {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes rb-pulse {
-  0%,
-  100% {
-    opacity: 0.8;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.06);
-  }
-}
-
 /* ------------------------------------------------------------- responsive */
 
 @media (max-width: 1024px) {
-  .rb-hero--flow {
-    grid-template-columns: 1fr;
-  }
-  .rb-art-flow {
-    min-height: 400px;
-    max-width: 520px;
-  }
   .rb-bento {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1658,18 +1251,6 @@
   .rb-footer__inner {
     padding: 28px 16px 110px;
   }
-  .rb-art-flow {
-    min-height: 340px;
-  }
-  .rb-sculpt--a {
-    width: 82%;
-  }
-  .rb-sculpt--b {
-    width: 74%;
-  }
-  .rb-sculpt--c {
-    width: 80%;
-  }
   .rb-bento {
     grid-template-columns: 1fr;
   }
@@ -1693,12 +1274,6 @@
   .rb-actions .rb-cta--send {
     width: 100%;
     min-width: 0;
-  }
-  .rb-selector {
-    bottom: 12px;
-  }
-  .rb-selector__hint {
-    display: none;
   }
 }
 

@@ -1,4 +1,4 @@
-export const VARIANTS = ["flow", "pulse", "canvas"] as const;
+export const VARIANTS = ["canvas"] as const;
 export type Variant = (typeof VARIANTS)[number];
 export type AuthProvider = "vk" | "yandex";
 

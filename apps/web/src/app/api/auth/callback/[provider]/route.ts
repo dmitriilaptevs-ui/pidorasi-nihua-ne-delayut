@@ -44,7 +44,7 @@ export async function GET(
   }
 
   if (!isAuthProvider(provider) || !publicAuthStatus()[provider]) {
-    return redirectTo(cfg.origin, "flow", "unavailable");
+    return redirectTo(cfg.origin, "canvas", "unavailable");
   }
 
   const url = new URL(request.url);

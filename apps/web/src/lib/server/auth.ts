@@ -673,7 +673,7 @@ export interface CallbackFailure {
 
 export type CallbackResult = CallbackSuccess | CallbackFailure;
 
-const FALLBACK_VARIANT: Variant = "flow";
+const FALLBACK_VARIANT: Variant = "canvas";
 const DUPLICATE_GUARDED_PARAMS = ["code", "state", "device_id", "error"] as const;
 
 function failure(code: string, variant: Variant): CallbackFailure {
