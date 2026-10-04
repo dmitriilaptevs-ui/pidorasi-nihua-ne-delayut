@@ -4,6 +4,8 @@ const config: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   devIndicators: false,
+  // Emit a self-contained server for the Docker image (see Dockerfile).
+  output: "standalone",
   // OAuth callbacks carry one-time codes: never write incoming URLs to dev logs.
   logging: false,
   async headers() {

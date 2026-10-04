@@ -18,6 +18,26 @@ npm run dev
 
 Без credentials работает интерфейс и чтение публичного каталога; OAuth и отправка AI-запроса явно недоступны. Приложение не показывает вымышленные ответы или «демо-вход». Для проверки полного сценария используйте следующий раздел.
 
+## Запуск в Docker
+
+Требуется Docker с запущенным движком. В каталоге `apps/web`:
+
+```bash
+npm run setup            # создаёт .env.local со случайным SESSION_SECRET
+docker compose up --build
+```
+
+Откройте <http://localhost/canvas> (корень `/` перенаправляет туда). Контейнер слушает внутри порт 3001, а хост публикует **порт 80** — это обязательное условие VK ID для `localhost` (порты 80/443).
+
+Образ собирается из локального дерева и использует Next.js `output: "standalone"`. Секреты (`SESSION_SECRET`, `VK_CLIENT_ID`, …) передаются в контейнер из локального `.env.local` **во время запуска** и **не встраиваются в образ**. `.dockerignore` исключает `.env*`, `node_modules` и артефакты тестов.
+
+Без Compose:
+
+```bash
+docker build -t rubai-onboarding-web:local .
+docker run --rm -p 80:3001 --env-file .env.local rubai-onboarding-web:local
+```
+
 ## Подключить настоящие интеграции локально
 
 ### 1. Настройки
