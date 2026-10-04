@@ -110,15 +110,26 @@ export function Experience(props: ExperienceProps) {
           <div className="rb-nav__actions">
             {viewer ? (
               <div className="rb-user">
-                <span className="rb-user__name" title={viewer.name}>
+                <button
+                  type="button"
+                  className="rb-user__name"
+                  title={viewer.name}
+                  aria-haspopup="true"
+                >
                   {viewer.name}
-                </span>
+                </button>
                 <span className="rb-user__provider">
                   {PROVIDER_LABEL[viewer.provider]}
                 </span>
-                <button type="button" className="rb-user__out" onClick={onSignOut}>
-                  Выйти
-                </button>
+                <div className="rb-user__menu">
+                  <button
+                    type="button"
+                    className="rb-user__out"
+                    onClick={onSignOut}
+                  >
+                    Выйти
+                  </button>
+                </div>
               </div>
             ) : (
               <button
@@ -240,7 +251,6 @@ export function Experience(props: ExperienceProps) {
           generating={generating}
           result={result}
           generationError={generationError}
-          onSignOut={onSignOut}
           onOpenLogin={() => setLoginOpen(true)}
         />
       </main>
