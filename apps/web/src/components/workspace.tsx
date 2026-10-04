@@ -9,7 +9,6 @@ import {
   Info,
   Loader2,
   Lock,
-  LogOut,
   Send,
   Sparkles,
 } from "lucide-react";
@@ -44,7 +43,6 @@ export interface WorkspaceProps {
   generating: boolean;
   result: GenerationResult | null;
   generationError: string | null;
-  onSignOut: () => void;
   onOpenLogin: () => void;
 }
 
@@ -67,7 +65,6 @@ export function Workspace({
   generating,
   result,
   generationError,
-  onSignOut,
   onOpenLogin,
 }: WorkspaceProps) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
@@ -150,12 +147,6 @@ export function Workspace({
             провайдеру модели. Не отправляйте персональные данные и секреты.
           </p>
         </div>
-        {viewer ? (
-          <button type="button" className="rb-ghost" onClick={onSignOut}>
-            <LogOut size={16} aria-hidden />
-            Выйти
-          </button>
-        ) : null}
       </div>
 
       {!viewer ? (

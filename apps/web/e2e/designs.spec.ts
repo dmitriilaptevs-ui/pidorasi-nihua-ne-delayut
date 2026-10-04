@@ -70,7 +70,8 @@ for (const variant of ["canvas"] as const) {
     await expect(page.locator(".rb-result__text")).toContainText("<script>");
     await expect(page.getByText("test-request-001")).toBeVisible();
     expect(errors).toEqual([]);
-    await page.locator(".rb-workspace").getByRole("button", { name: "Выйти", exact: true }).click();
+    await page.locator(".rb-user").hover();
+    await page.locator(".rb-user__out").click();
     await expect(page.getByRole("heading", { name: "Сначала войдите" })).toBeVisible();
     await expect(page.locator(".rb-result__text")).toHaveCount(0);
   });
@@ -102,4 +103,23 @@ test("removed designs are gone: routes 404 and no design switcher", async ({ pag
   }
   await page.goto("/canvas");
   await expect(page.locator(".rb-selector")).toHaveCount(0);
+});
+
+test("signed-in header reveals a lime logout on hover and drops the workspace logout", async ({ page }) => {
+  await fixtureApi(page, true);
+  await page.goto("/canvas");
+  // The "Начать бесплатно" CTA is not shown once a session exists.
+  await expect(page.getByRole("button", { name: "Начать бесплатно", exact: true })).toHaveCount(0);
+
+  // Logout stays hidden until the user name is hovered, then appears.
+  const logout = page.locator(".rb-user__out");
+  await expect(logout).toHaveText("Выйти");
+  await expect(logout).not.toBeVisible();
+  await page.locator(".rb-user").hover();
+  await expect(logout).toBeVisible();
+
+  // The workspace section no longer duplicates the logout button.
+  await expect(page.locator(".rb-workspace").getByRole("button", { name: "Выйти" })).toHaveCount(0);
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
