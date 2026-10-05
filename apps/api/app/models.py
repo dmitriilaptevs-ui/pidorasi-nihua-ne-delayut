@@ -11,8 +11,19 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -147,3 +158,91 @@ class CatalogPricing(Base):
     cached_rub_per_mtok: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
     valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Wallet(Base):
+    """User balance projection plus the rounding remainder.
+
+    balance_kopecks and reserved_kopecks are projections of postings and
+    reserves; the sub-kopeck remainder keeps fractional kopecks from being
+    rounded away for free.
+    """
+
+    __tablename__ = "wallets"
+
+    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    currency: Mapped[str] = mapped_column(String(8), default="RUB")
+    balance_kopecks: Mapped[int] = mapped_column(BigInteger, default=0)
+    reserved_kopecks: Mapped[int] = mapped_column(BigInteger, default=0)
+    sub_kopeck_remainder: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class LedgerTransaction(Base):
+    __tablename__ = "ledger_transactions"
+
+    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # topup | usage | adjustment | refund
+    kind: Mapped[str] = mapped_column(String(16))
+    reference: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    memo: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LedgerPosting(Base):
+    """One side of a double-entry transaction; amounts are signed kopecks.
+
+    Invariant (enforced in the service and asserted by tests): postings of one
+    transaction sum to zero.
+    """
+
+    __tablename__ = "ledger_postings"
+
+    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    transaction_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("ledger_transactions.id", ondelete="CASCADE"), index=True
+    )
+    account_code: Mapped[str] = mapped_column(String(80), index=True)
+    amount_kopecks: Mapped[int] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Reserve(Base):
+    __tablename__ = "reserves"
+
+    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    wallet_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("wallets.id", ondelete="CASCADE"), index=True
+    )
+    api_key_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("api_keys.id", ondelete="SET NULL"), nullable=True
+    )
+    request_ref: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    amount_kopecks: Mapped[int] = mapped_column(BigInteger)
+    # held | settled | released | reconciliation
+    status: Mapped[str] = mapped_column(String(24), default="held")
+    settled_kopecks: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ReconciliationItem(Base):
+    __tablename__ = "reconciliation_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    reserve_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("reserves.id", ondelete="SET NULL"), nullable=True
+    )
+    request_ref: Mapped[str] = mapped_column(String(120), index=True)
+    kind: Mapped[str] = mapped_column(String(40))
+    payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="open")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

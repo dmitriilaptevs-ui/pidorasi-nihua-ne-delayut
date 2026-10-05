@@ -103,10 +103,16 @@ async def sync_catalog(
     markup = as_decimal(settings.price_markup)
     now = datetime.now(timezone.utc)
     seen_ids: set[str] = set()
+    invalid_ids: set[str] = set()
 
     for entry in entries:
         mapped = _mapped(entry)
         if mapped is None or not _is_text_model(entry):
+            # An entry with an unusable price (for example the -1 auto-routing
+            # sentinel) must never be quotable: retire any active version.
+            openrouter_id = str(entry.get("id") or "").strip()
+            if mapped is None and openrouter_id:
+                invalid_ids.add(openrouter_id)
             continue
         seen_ids.add(mapped["openrouter_id"])
         report.seen += 1
@@ -194,6 +200,29 @@ async def sync_catalog(
         if model.openrouter_id not in seen_ids:
             model.available = False
             report.unavailable += 1
+
+    # Invalid provider pricing retires the active version immediately.
+    for openrouter_id in invalid_ids:
+        model = (
+            await db.execute(
+                select(CatalogModel).where(CatalogModel.openrouter_id == openrouter_id)
+            )
+        ).scalar_one_or_none()
+        if model is None:
+            continue
+        if model.available:
+            model.available = False
+            report.unavailable += 1
+        active = (
+            await db.execute(
+                select(CatalogPricing).where(
+                    CatalogPricing.model_id == model.id, CatalogPricing.retired_at.is_(None)
+                )
+            )
+        ).scalar_one_or_none()
+        if active is not None:
+            active.retired_at = now
+            report.repriced += 1
 
     await db.flush()
     return report

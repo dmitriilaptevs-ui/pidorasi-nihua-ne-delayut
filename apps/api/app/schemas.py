@@ -37,6 +37,12 @@ class ResetRequest(BaseModel):
     password: str = Field(min_length=10, max_length=200)
 
 
+class CreditRequest(BaseModel):
+    email: EmailStr
+    amount_kopecks: int = Field(ge=1, le=100_000_000)
+    reference: str = Field(min_length=3, max_length=120)
+
+
 class KeyCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     monthly_limit_kopecks: int | None = Field(default=None, ge=0)
