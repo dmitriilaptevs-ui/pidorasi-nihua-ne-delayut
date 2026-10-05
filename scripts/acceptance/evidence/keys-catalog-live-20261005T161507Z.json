@@ -1,0 +1,176 @@
+{
+  "pack": "identity-live",
+  "started_at": "2026-10-05T16:14:11.330839+00:00",
+  "finished_at": "2026-10-05T16:15:07.359362+00:00",
+  "summary": {
+    "total": 19,
+    "passed": 15,
+    "failed": 4,
+    "blocked": 3
+  },
+  "notes": [
+    "base_url=http://127.0.0.1:3001",
+    "origin=https://40cdcc5738caca.lhr.life",
+    "api_container=rubai-api-1",
+    "api_image=sha256:0e05a76822d766d7e81badcfce83be08fb2a06e4ce9c234dff2eba1419942d96 2026-10-05T16:08:44.123797825Z",
+    "test_account=keys-acceptance+20261005t161412z-e7eaf3@example.com"
+  ],
+  "steps": [
+    {
+      "area": "liveness /healthz",
+      "expected": "HTTP 200",
+      "observed": "HTTP 200 {\"status\":\"ok\"}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "liveness /readyz",
+      "expected": "HTTP 200",
+      "observed": "HTTP 200 {\"status\":\"ok\",\"database\":true,\"redis\":true}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "verified account ready",
+      "expected": "register + verify + login",
+      "observed": "register throttled (429); using the verified admin account",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "unverified account key creation blocked",
+      "expected": "HTTP 403 email_not_verified",
+      "observed": "not attempted (register throttle exhausted); covered by earlier runs recorded in the PR",
+      "ok": false,
+      "blocked": true,
+      "detail": null
+    },
+    {
+      "area": "key creation returns raw key once",
+      "expected": "HTTP 201, key prefix sk-rubai-, item.prefix=raw[:16], no digest",
+      "observed": "HTTP 201, raw=len=41 sha256=4f656d50368b, prefix=sk-rubai-ShWRUdf",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "key list is prefix-only",
+      "expected": "HTTP 200, no raw key and no digest in payload",
+      "observed": "HTTP 200, listed=True, raw_in_body=False, hash_in_body=False",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "database stores digest + prefix only",
+      "expected": "digest_ok, prefix_ok, plaintext_absent, not revoked",
+      "observed": "{\"found\": true, \"digest_ok\": true, \"prefix_ok\": true, \"plaintext_absent\": true, \"revoked\": false}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "key authenticates before revoke (separate process)",
+      "expected": "authenticated=true",
+      "observed": "{\"authenticated\": true} (process round-trip baseline 11.48s)",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "foreign revoke denied",
+      "expected": "HTTP 404 key_not_found",
+      "observed": "not attempted",
+      "ok": false,
+      "blocked": true,
+      "detail": null
+    },
+    {
+      "area": "revoked key rejected within 5s across processes",
+      "expected": "revoke 200; separate-process auth false immediately; adjusted elapsed < 5s; revoked_at set",
+      "observed": "revoke HTTP 200, auth=False, raw=10.30s, baseline=11.48s, adjusted=0.00s, revoked=True",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "public catalog with decimal RUB prices",
+      "expected": "HTTP 200 anonymously; every available model priced, non-negative, decimal strings",
+      "observed": "HTTP 200, items=465, available=465, format_problems=0, negative_prices=14",
+      "ok": false,
+      "blocked": false,
+      "detail": [
+        "openrouter/auto:input_rub_per_mtok=-120000000.000000",
+        "openrouter/auto:output_rub_per_mtok=-120000000.000000",
+        "openrouter/auto-beta:input_rub_per_mtok=-120000000.000000"
+      ]
+    },
+    {
+      "area": "catalog sync requires a session",
+      "expected": "HTTP 401",
+      "observed": "HTTP 401 {\"error\":{\"code\":\"not_authenticated\",\"message\":\"Требуется вход.\"}}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "catalog sync requires admin",
+      "expected": "HTTP 403",
+      "observed": "unverified session unavailable",
+      "ok": false,
+      "blocked": true,
+      "detail": null
+    },
+    {
+      "area": "admin session",
+      "expected": "login as admin",
+      "observed": "admin session established",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "sync report internally consistent",
+      "expected": "HTTP 200, created+repriced+unchanged == seen",
+      "observed": "HTTP 200 {\"seen\": 465, \"created\": 0, \"repriced\": 0, \"unchanged\": 465, \"unavailable\": 0}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "second sync is idempotent",
+      "expected": "created=0, repriced=0, unavailable=0, unchanged=seen",
+      "observed": "HTTP 200 {\"seen\": 465, \"created\": 0, \"repriced\": 0, \"unchanged\": 465, \"unavailable\": 0}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "sync does not rewrite pricing history",
+      "expected": "no existing model's active version/valid_from/prices change on an idempotent sync",
+      "observed": "drifted=0",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "catalog availability matches feed",
+      "expected": "available models == sync seen",
+      "observed": "available=465, seen=465",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "decimal math and append-only history in the database",
+      "expected": "exact half-up recomputation matches every row; no duplicate active versions",
+      "observed": "{\"rows\": 465, \"mismatch_count\": 0, \"mismatches\": [], \"retired_rows\": 0, \"models_with_multiple_active\": 0, \"models_with_active_pricing\": 465}",
+      "ok": true,
+      "blocked": false,
+      "detail": []
+    }
+  ]
+}
