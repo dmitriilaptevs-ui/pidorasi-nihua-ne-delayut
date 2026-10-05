@@ -14,6 +14,7 @@ import {
   type KeyItem,
   type LedgerItem,
   type ReconciliationView,
+  type PaymentItem,
   type RequestItem,
   type Viewer,
   type WalletState,
@@ -34,6 +35,8 @@ export function AccountPanel() {
   const [keys, setKeys] = useState<KeyItem[]>([]);
   const [ledger, setLedger] = useState<LedgerItem[]>([]);
   const [requests, setRequests] = useState<RequestItem[]>([]);
+  const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [payAmount, setPayAmount] = useState("500");
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [catalogTotal, setCatalogTotal] = useState(0);
   const [reconciliation, setReconciliation] = useState<ReconciliationView[]>([]);
@@ -50,17 +53,19 @@ export function AccountPanel() {
   const load = useCallback(async () => {
     const me = await apiFetch<{ user: Viewer }>("/api/auth/me");
     setViewer(me.user);
-    const [walletData, keysData, ledgerData, requestsData, catalogData] = await Promise.all([
+    const [walletData, keysData, ledgerData, requestsData, paymentsData, catalogData] = await Promise.all([
       apiFetch<{ wallet: WalletState }>("/api/wallet"),
       apiFetch<{ items: KeyItem[] }>("/api/keys"),
       apiFetch<{ items: LedgerItem[] }>("/api/wallet/ledger"),
       apiFetch<{ items: RequestItem[] }>("/api/requests?limit=20"),
+      apiFetch<{ items: PaymentItem[] }>("/api/payments"),
       apiFetch<{ items: CatalogItem[]; total: number }>("/api/catalog?limit=100"),
     ]);
     setWallet(walletData.wallet);
     setKeys(keysData.items);
     setLedger(ledgerData.items);
     setRequests(requestsData.items);
+    setPayments(paymentsData.items);
     setCatalog(catalogData.items.filter((item) => item.available));
     setCatalogTotal(catalogData.total);
     if (me.user.role === "admin") {
@@ -111,6 +116,21 @@ export function AccountPanel() {
       if (!window.confirm(`Отозвать ключ «${name}»? Запросы с ним сразу перестанут работать.`)) return;
       await apiFetch(`/api/keys/${id}/revoke`, { method: "POST" });
       setNotice(`Ключ «${name}» отозван.`);
+    });
+
+  const startPayment = () =>
+    guard(async () => {
+      const kopecks = Math.round(Number(payAmount) * 100);
+      if (!Number.isFinite(kopecks) || kopecks < 100) throw new Error("Укажите сумму не меньше 1 ₽.");
+      const data = await apiFetch<{ payment: PaymentItem }>("/api/payments", {
+        method: "POST",
+        body: JSON.stringify({ amount_kopecks: kopecks }),
+      });
+      if (data.payment.confirmation_url) {
+        window.location.assign(data.payment.confirmation_url);
+        return;
+      }
+      setNotice("Платёж создан, ссылка на оплату недоступна — обратитесь в поддержку.");
     });
 
   const logout = () =>
@@ -205,6 +225,57 @@ export function AccountPanel() {
             Деньги списываются только после ответа модели, а при ошибке провайдера резерв возвращается. Сейчас
             пополнение работает в тестовом режиме: реальные деньги не принимаются.
           </p>
+        </section>
+
+        <section className="rb-card" aria-label="Пополнение">
+          <h2>Пополнение (тестовый режим)</h2>
+          <p className="rb-muted">
+            Сейчас работает песочница платёжного провайдера: реальные деньги не принимаются. После оплаты тестовой
+            картой баланс пополнится автоматически.
+          </p>
+          <div className="rb-actions">
+            <div className="rb-field" style={{ maxWidth: 220 }}>
+              <label htmlFor="pay-amount">Сумма, ₽</label>
+              <input
+                id="pay-amount"
+                value={payAmount}
+                onChange={(event) => setPayAmount(event.target.value)}
+                inputMode="decimal"
+                placeholder="500"
+              />
+            </div>
+            <button className="rb-btn" type="button" onClick={startPayment} disabled={busy}>
+              Перейти к оплате
+            </button>
+          </div>
+          {payments.length > 0 ? (
+            <div className="rb-table-wrap" tabIndex={0} role="region" aria-label="Таблица платежей: прокрутите, чтобы увидеть все столбцы">
+              <table className="rb-table" style={{ marginTop: 12 }}>
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Сумма</th>
+                    <th>Статус</th>
+                    <th>Провайдер</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((item) => (
+                    <tr key={item.id}>
+                      <td>{formatDate(item.created_at)}</td>
+                      <td className="rb-table__num">{formatRub(item.amount_kopecks)}</td>
+                      <td>
+                        <span className={item.status === "succeeded" ? "rb-badge rb-badge--ok" : "rb-badge"}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="rb-muted">{item.provider}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </section>
 
         <section className="rb-card" aria-label="API-ключи">

@@ -104,6 +104,18 @@ export interface CatalogItem {
   pricing: PricingView | null;
 }
 
+export interface PaymentItem {
+  id: string;
+  status: string;
+  amount_kopecks: number;
+  currency: string;
+  refunded_kopecks: number;
+  confirmation_url: string | null;
+  provider: string;
+  created_at: string;
+  paid_at: string | null;
+}
+
 export interface RequestItem {
   id: string;
   request_ref: string;
