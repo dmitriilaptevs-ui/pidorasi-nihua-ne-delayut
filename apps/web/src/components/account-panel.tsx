@@ -14,6 +14,7 @@ import {
   type KeyItem,
   type LedgerItem,
   type ReconciliationView,
+  type RequestItem,
   type Viewer,
   type WalletState,
 } from "@/lib/api";
@@ -32,6 +33,7 @@ export function AccountPanel() {
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [keys, setKeys] = useState<KeyItem[]>([]);
   const [ledger, setLedger] = useState<LedgerItem[]>([]);
+  const [requests, setRequests] = useState<RequestItem[]>([]);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [catalogTotal, setCatalogTotal] = useState(0);
   const [reconciliation, setReconciliation] = useState<ReconciliationView[]>([]);
@@ -48,15 +50,17 @@ export function AccountPanel() {
   const load = useCallback(async () => {
     const me = await apiFetch<{ user: Viewer }>("/api/auth/me");
     setViewer(me.user);
-    const [walletData, keysData, ledgerData, catalogData] = await Promise.all([
+    const [walletData, keysData, ledgerData, requestsData, catalogData] = await Promise.all([
       apiFetch<{ wallet: WalletState }>("/api/wallet"),
       apiFetch<{ items: KeyItem[] }>("/api/keys"),
       apiFetch<{ items: LedgerItem[] }>("/api/wallet/ledger"),
+      apiFetch<{ items: RequestItem[] }>("/api/requests?limit=20"),
       apiFetch<{ items: CatalogItem[]; total: number }>("/api/catalog?limit=100"),
     ]);
     setWallet(walletData.wallet);
     setKeys(keysData.items);
     setLedger(ledgerData.items);
+    setRequests(requestsData.items);
     setCatalog(catalogData.items.filter((item) => item.available));
     setCatalogTotal(catalogData.total);
     if (me.user.role === "admin") {
@@ -308,6 +312,51 @@ export function AccountPanel() {
               ) : null}
             </tbody>
           </table>
+          </div>
+        </section>
+
+        <section className="rb-card" aria-label="Запросы">
+          <h2>Запросы к моделям</h2>
+          <div className="rb-table-wrap" tabIndex={0} role="region" aria-label="Таблица запросов: прокрутите, чтобы увидеть все столбцы">
+            <table className="rb-table">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Модель</th>
+                  <th>Токены (вход/выход)</th>
+                  <th>Стоимость</th>
+                  <th>Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((item) => (
+                  <tr key={item.id}>
+                    <td>{formatDate(item.created_at)}</td>
+                    <td>
+                      <div style={{ fontWeight: 700 }}>{item.model}</div>
+                      <div className="rb-muted">{item.request_ref.slice(0, 10)}…</div>
+                    </td>
+                    <td className="rb-table__num">
+                      {item.prompt_tokens} / {item.completion_tokens}
+                      {item.cached_tokens ? ` (+${item.cached_tokens} кэш)` : ""}
+                    </td>
+                    <td className="rb-table__num">{formatRub(item.cost_kopecks)}</td>
+                    <td>
+                      <span className={item.status === "succeeded" ? "rb-badge rb-badge--ok" : "rb-badge rb-badge--warn"}>
+                        {item.status === "succeeded" ? "успешно" : item.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {requests.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="rb-muted">
+                      Запросов пока нет — подключите SDK с ключом платформы.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
         </section>
 

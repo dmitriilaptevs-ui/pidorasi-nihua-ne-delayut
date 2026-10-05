@@ -58,6 +58,19 @@ UPSTREAM_AMBIGUOUS = {
 }
 
 
+async def _record_failure(db, *, user, api_key, request_ref: str, model, status: str) -> None:
+    await gw.record_request(
+        db,
+        user_id=user.id,
+        api_key_id=api_key.id,
+        request_ref=request_ref,
+        model_id=model.openrouter_id,
+        provider=model.provider,
+        status=status,
+    )
+    await db.commit()
+
+
 def _error_response(exc: ApiError) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content=gw.oai_payload(exc))
 
@@ -151,12 +164,12 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
         except UpstreamNotConfigured:
             if reserve is not None:
                 await ledger_service.release(db, reserve=reserve, reason="upstream_not_configured")
-                await db.commit()
+            await _record_failure(db, user=user, api_key=api_key, request_ref=request_ref, model=model, status="upstream_not_configured")
             return JSONResponse(status_code=503, content=UPSTREAM_NOT_CONFIGURED)
         except UpstreamConnectError:
             if reserve is not None:
                 await ledger_service.release(db, reserve=reserve, reason="upstream_unreachable")
-                await db.commit()
+            await _record_failure(db, user=user, api_key=api_key, request_ref=request_ref, model=model, status="upstream_unreachable")
             return JSONResponse(status_code=502, content=UPSTREAM_UNREACHABLE)
         except UpstreamError:
             if reserve is not None:
@@ -167,20 +180,22 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
                     payload={"model": model.openrouter_id},
                     reserve=reserve,
                 )
-                await db.commit()
+            await _record_failure(db, user=user, api_key=api_key, request_ref=request_ref, model=model, status="ambiguous")
             return JSONResponse(status_code=502, content=UPSTREAM_AMBIGUOUS)
 
         if status >= 400:
             if reserve is not None:
                 await ledger_service.release(db, reserve=reserve, reason="upstream_error")
-                await db.commit()
+            await _record_failure(db, user=user, api_key=api_key, request_ref=request_ref, model=model, status="upstream_error")
             return JSONResponse(status_code=status, content=data)
 
-        usage = data.get("usage") if isinstance(data, dict) else None
+        usage = data.get("usage") if isinstance(data, dict) and isinstance(data.get("usage"), dict) else None
+        charged = 0
+        status = "succeeded" if usage else "reconciled"
         if reserve is not None:
-            if isinstance(usage, dict) and usage.get("prompt_tokens") is not None:
+            if usage is not None and usage.get("prompt_tokens") is not None:
                 cost = gw.compute_cost_rub(snapshot, usage)
-                await ledger_service.settle(db, reserve=reserve, cost_rub=cost)
+                _, charged = await ledger_service.settle(db, reserve=reserve, cost_rub=cost)
             else:
                 await ledger_service.flag_reconciliation(
                     db,
@@ -189,7 +204,20 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
                     payload={"model": model.openrouter_id},
                     reserve=reserve,
                 )
-            await db.commit()
+        await gw.record_request(
+            db,
+            user_id=user.id,
+            api_key_id=api_key.id,
+            request_ref=request_ref,
+            model_id=model.openrouter_id,
+            provider=model.provider,
+            status=status,
+            usage=usage,
+            cost_kopecks=charged,
+            pricing=pricing,
+            provider_request_id=str(data.get("id") or "") if isinstance(data, dict) else None,
+        )
+        await db.commit()
         return JSONResponse(content=data)
 
     # Streaming path
@@ -198,12 +226,12 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
     except UpstreamNotConfigured:
         if reserve is not None:
             await ledger_service.release(db, reserve=reserve, reason="upstream_not_configured")
-            await db.commit()
+        await _record_failure(db, user=user, api_key=api_key, request_ref=request_ref, model=model, status="upstream_not_configured")
         return JSONResponse(status_code=503, content=UPSTREAM_NOT_CONFIGURED)
     except UpstreamConnectError:
         if reserve is not None:
             await ledger_service.release(db, reserve=reserve, reason="upstream_unreachable")
-            await db.commit()
+        await _record_failure(db, user=user, api_key=api_key, request_ref=request_ref, model=model, status="upstream_unreachable")
         return JSONResponse(status_code=502, content=UPSTREAM_UNREACHABLE)
     except UpstreamError:
         if reserve is not None:
@@ -214,7 +242,7 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
                 payload={"model": model.openrouter_id, "stream": True},
                 reserve=reserve,
             )
-            await db.commit()
+        await _record_failure(db, user=user, api_key=api_key, request_ref=request_ref, model=model, status="ambiguous")
         return JSONResponse(status_code=502, content=UPSTREAM_AMBIGUOUS)
 
     if response.status_code >= 400:
@@ -223,7 +251,7 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
         await client.aclose()
         if reserve is not None:
             await ledger_service.release(db, reserve=reserve, reason="upstream_error")
-            await db.commit()
+        await _record_failure(db, user=user, api_key=api_key, request_ref=request_ref, model=model, status="upstream_error")
         try:
             content = json.loads(raw)
         except ValueError:
@@ -246,10 +274,12 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
                 # a fresh session and reconcile instead of releasing blindly.
                 async with session_factory()() as accounting:
                     fresh = await accounting.get(Reserve, reserve_id)
+                    charged = 0
+                    status = "succeeded" if scanner.usage is not None else "reconciled"
                     if fresh is not None and fresh.status == "held":
                         if scanner.usage is not None:
                             cost = gw.compute_cost_rub(snapshot, scanner.usage)
-                            await ledger_service.settle(accounting, reserve=fresh, cost_rub=cost)
+                            _, charged = await ledger_service.settle(accounting, reserve=fresh, cost_rub=cost)
                         else:
                             await ledger_service.flag_reconciliation(
                                 accounting,
@@ -258,7 +288,19 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
                                 payload={"model": model.openrouter_id, "stream": True},
                                 reserve=fresh,
                             )
-                        await accounting.commit()
+                    await gw.record_request(
+                        accounting,
+                        user_id=user.id,
+                        api_key_id=api_key.id,
+                        request_ref=request_ref,
+                        model_id=model.openrouter_id,
+                        provider=model.provider,
+                        status=status,
+                        usage=scanner.usage,
+                        cost_kopecks=charged,
+                        pricing=pricing,
+                    )
+                    await accounting.commit()
 
     return StreamingResponse(
         event_stream(),

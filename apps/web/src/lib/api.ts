@@ -104,6 +104,20 @@ export interface CatalogItem {
   pricing: PricingView | null;
 }
 
+export interface RequestItem {
+  id: string;
+  request_ref: string;
+  model: string;
+  provider: string | null;
+  status: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cached_tokens: number;
+  cost_kopecks: number;
+  price_version: number | null;
+  created_at: string;
+}
+
 export interface ReconciliationView {
   id: string;
   request_ref: string;
