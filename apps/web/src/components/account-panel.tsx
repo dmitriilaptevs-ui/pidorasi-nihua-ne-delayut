@@ -40,6 +40,7 @@ export function AccountPanel() {
   const [keyLimit, setKeyLimit] = useState("");
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -69,7 +70,7 @@ export function AccountPanel() {
         return;
       }
       setError(err instanceof Error ? err.message : "Не удалось загрузить кабинет.");
-    });
+    }).finally(() => setLoading(false));
   }, [load, router]);
 
   async function guard(action: () => Promise<void>) {
@@ -99,10 +100,11 @@ export function AccountPanel() {
       setNotice("Ключ создан. Скопируйте его сейчас — он показывается один раз.");
     });
 
-  const revokeKey = (id: string) =>
+  const revokeKey = (id: string, name: string) =>
     guard(async () => {
+      if (!window.confirm(`Отозвать ключ «${name}»? Запросы с ним сразу перестанут работать.`)) return;
       await apiFetch(`/api/keys/${id}/revoke`, { method: "POST" });
-      setNotice("Ключ отозван.");
+      setNotice(`Ключ «${name}» отозван.`);
     });
 
   const logout = () =>
@@ -137,8 +139,15 @@ export function AccountPanel() {
       <div className="rb-page">
         <div className="rb-page__wrap">
           <div className="rb-card rb-card--narrow">
-            <p className="rb-muted">Загружаем кабинет…</p>
-            {error ? <div className="rb-alert rb-alert--error">{error}</div> : null}
+            {loading ? <p className="rb-muted">Загружаем кабинет…</p> : null}
+            {error ? (
+              <div role="alert">
+                <div className="rb-alert rb-alert--error">{error}</div>
+                <button className="rb-btn rb-btn--sm" type="button" onClick={() => { setLoading(true); setError(null); load().catch(() => setError("Не удалось загрузить кабинет.")); }}>
+                  Повторить
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -165,8 +174,10 @@ export function AccountPanel() {
           </div>
         </nav>
 
-        {error ? <div className="rb-alert rb-alert--error">{error}</div> : null}
-        {notice ? <div className="rb-alert rb-alert--ok">{notice}</div> : null}
+        <h1 className="rb-page__title">Личный кабинет</h1>
+
+        {error ? <div className="rb-alert rb-alert--error" role="alert">{error}</div> : null}
+        {notice ? <div className="rb-alert rb-alert--ok" role="status">{notice}</div> : null}
 
         <section className="rb-card" aria-label="Баланс">
           <h2>Баланс</h2>
@@ -185,8 +196,8 @@ export function AccountPanel() {
             </div>
           </div>
           <p className="rb-muted" style={{ marginTop: 12 }}>
-            Списания идут только после фактического ответа модели; ошибки провайдера возвращают резерв. Пополнение —
-            тестовое (песочница).
+            Деньги списываются только после ответа модели, а при ошибке провайдера резерв возвращается. Сейчас
+            пополнение работает в тестовом режиме: реальные деньги не принимаются.
           </p>
         </section>
 
@@ -201,8 +212,14 @@ export function AccountPanel() {
                   className="rb-btn rb-btn--sm"
                   type="button"
                   onClick={() => {
-                    navigator.clipboard?.writeText(freshKey).catch(() => undefined);
-                    setNotice("Ключ скопирован.");
+                    const write = navigator.clipboard?.writeText(freshKey);
+                    if (!write) {
+                      setNotice("Скопируйте ключ вручную — буфер обмена недоступен.");
+                      return;
+                    }
+                    write
+                      .then(() => setNotice("Ключ скопирован."))
+                      .catch(() => setNotice("Не удалось скопировать — выделите ключ вручную."));
                   }}
                 >
                   Скопировать
@@ -237,7 +254,7 @@ export function AccountPanel() {
             {!viewer.email_verified ? <span className="rb-muted">Сначала подтвердите почту.</span> : null}
           </div>
 
-          <div className="rb-table-wrap">
+          <div className="rb-table-wrap" tabIndex={0} role="region" aria-label="Таблица: прокрутите, чтобы увидеть все столбцы">
           <table className="rb-table" style={{ marginTop: 16 }}>
             <thead>
               <tr>
@@ -270,8 +287,9 @@ export function AccountPanel() {
                       <button
                         className="rb-btn rb-btn--danger rb-btn--sm"
                         type="button"
-                        onClick={() => revokeKey(item.id)}
+                        onClick={() => revokeKey(item.id, item.name)}
                         disabled={busy}
+                        aria-label={`Отозвать ключ ${item.name}`}
                       >
                         Отозвать
                       </button>
@@ -293,7 +311,7 @@ export function AccountPanel() {
 
         <section className="rb-card" aria-label="История">
           <h2>История операций</h2>
-          <div className="rb-table-wrap">
+          <div className="rb-table-wrap" tabIndex={0} role="region" aria-label="Таблица: прокрутите, чтобы увидеть все столбцы">
           <table className="rb-table">
             <thead>
               <tr>
@@ -335,15 +353,15 @@ export function AccountPanel() {
               placeholder="например, gemini"
             />
           </div>
-          <div className="rb-table-wrap">
+          <div className="rb-table-wrap" tabIndex={0} role="region" aria-label="Таблица: прокрутите, чтобы увидеть все столбцы">
           <table className="rb-table">
             <thead>
               <tr>
                 <th>Модель</th>
                 <th>Контекст</th>
-                <th>Вход, ₽/Мток</th>
-                <th>Выход, ₽/Мток</th>
-                <th>Tools</th>
+                <th>Вход, ₽ за 1 млн</th>
+                <th>Выход, ₽ за 1 млн</th>
+                <th>Инструменты</th>
               </tr>
             </thead>
             <tbody>
@@ -362,7 +380,13 @@ export function AccountPanel() {
             </tbody>
           </table>
           </div>
-          <p className="rb-muted">Показаны первые 40 моделей; уточните поиск, чтобы найти нужную.</p>
+          <p className="rb-muted">
+            {filter.trim()
+              ? visibleModels.length === 0
+                ? "Ничего не найдено — измените запрос."
+                : `Найдено: ${visibleModels.length}`
+              : `Показаны первые ${visibleModels.length} из ${catalog.length} моделей; уточните поиск, чтобы найти нужную.`}
+          </p>
         </section>
 
         {viewer.role === "admin" ? (
@@ -376,7 +400,7 @@ export function AccountPanel() {
             {syncReport ? <div className="rb-alert rb-alert--ok">{syncReport}</div> : null}
 
             <h2 style={{ marginTop: 20 }}>Сверка ({reconciliation.length})</h2>
-            <div className="rb-table-wrap">
+            <div className="rb-table-wrap" tabIndex={0} role="region" aria-label="Таблица: прокрутите, чтобы увидеть все столбцы">
             <table className="rb-table">
               <thead>
                 <tr>

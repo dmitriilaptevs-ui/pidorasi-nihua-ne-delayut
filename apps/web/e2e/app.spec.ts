@@ -90,6 +90,8 @@ test("create a key once, copy-once behaviour, then revoke it", async ({ page }) 
   const row = page.locator("tr", { hasText: keyName });
   await row.scrollIntoViewIfNeeded();
   await expect(row).toContainText("активен");
+  // Revocation asks for confirmation in the UI.
+  page.on("dialog", (dialog) => dialog.accept());
   await row.getByRole("button", { name: "Отозвать" }).click();
   await expect(row).toContainText("отозван", { timeout: 20_000 });
 });

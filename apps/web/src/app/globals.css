@@ -4,5 +4,5 @@ button, textarea, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button:not(:disabled), summary { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
-::selection { background: #b9c9ff; color: #0a1a33; }
+::selection { background: #b4e000; color: #16140f; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

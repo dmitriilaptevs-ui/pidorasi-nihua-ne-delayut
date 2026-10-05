@@ -9,6 +9,12 @@
   font-family: "Manrope", system-ui, sans-serif;
 }
 
+.rb-page *,
+.rb-page *::before,
+.rb-page *::after {
+  box-sizing: border-box;
+}
+
 .rb-page__wrap {
   width: min(1080px, 100% - 40px);
   margin: 0 auto;
@@ -35,6 +41,13 @@
   color: #16140f;
 }
 
+.rb-page__title {
+  font-family: "Unbounded", system-ui, sans-serif;
+  font-size: 28px;
+  margin: 0 0 18px;
+  letter-spacing: -0.01em;
+}
+
 .rb-page__links {
   display: flex;
   gap: 14px;
@@ -46,11 +59,15 @@
   color: #16140f;
   font-weight: 600;
   text-decoration: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
 }
 
 .rb-page__links a:hover {
   border-bottom-color: #b4e000;
+}
+
+.rb-page__links span {
+  overflow-wrap: anywhere;
 }
 
 .rb-card {
@@ -75,6 +92,18 @@
 
 .rb-card h1 {
   font-size: 26px;
+}
+
+@media (min-width: 900px) {
+  .rb-card h1 {
+    font-size: 34px;
+  }
+}
+
+.rb-feature__title {
+  font-family: "Unbounded", system-ui, sans-serif;
+  font-size: 15px;
+  margin: 0 0 8px;
 }
 
 .rb-card h2 {
@@ -175,6 +204,15 @@
   padding: 8px 12px;
   font-size: 13px;
   box-shadow: 3px 3px 0 #16140f;
+  min-height: 44px;
+}
+
+/* Keyboard focus must be obvious on every interactive element. */
+.rb-btn:focus-visible,
+.rb-page__links a:focus-visible,
+.rb-table-wrap:focus-visible {
+  outline: 3px solid #16140f;
+  outline-offset: 2px;
 }
 
 .rb-alert {
@@ -347,6 +385,16 @@
   .rb-page__wrap {
     width: min(1080px, 100% - 24px);
     padding-top: 16px;
+  }
+
+  .rb-page__nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .rb-page__links {
+    justify-content: flex-start;
   }
 
   .rb-card,

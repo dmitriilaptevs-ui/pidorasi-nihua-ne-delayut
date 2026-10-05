@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 import { apiFetch, formatNumber, type CatalogItem } from "@/lib/api";
@@ -8,20 +8,20 @@ import "./panel.css";
 
 const FEATURES = [
   {
-    title: "Один ключ платформы",
-    text: "Ваш ключ sk-rubai-… работает со всеми моделями каталога. Ключ OpenRouter остаётся на сервере и никогда не попадает к клиенту.",
+    title: "Один ключ вместо многих",
+    text: "Ключ платформы работает со всеми моделями каталога. Ключ OpenRouter остаётся на сервере и клиенту не выдаётся.",
   },
   {
     title: "Оплата в рублях",
-    text: "Баланс — в рублях и копейках. Тарифы пересчитываются из закупочных цен с наценкой платформы и фиксируются вместе с курсом.",
+    text: "Пополняйте баланс в рублях и платите за фактические токены. Тарифы фиксируются вместе с курсом: прошлые списания не меняются.",
   },
   {
     title: "OpenAI-совместимый API",
-    text: "Подключите любой SDK, указав base URL платформы: /v1/models, /v1/chat/completions, streaming и tools.",
+    text: "Подключите привычный SDK, указав адрес платформы: /v1/models, /v1/chat/completions, потоковые ответы и вызов инструментов.",
   },
   {
     title: "Лимиты и история",
-    text: "Месячные лимиты по каждому ключу, журнал запросов и расходов, резервы до запроса и сверка неопределённых затрат.",
+    text: "Задайте месячный лимит каждому ключу и следите за расходом: журнал операций и стоимость каждого запроса видны в кабинете.",
   },
 ];
 
@@ -34,22 +34,29 @@ const STEPS = [
 export function Landing() {
   const [models, setModels] = useState<CatalogItem[]>([]);
   const [signedIn, setSignedIn] = useState(false);
+  const [catalogState, setCatalogState] = useState<"loading" | "ready" | "error">("loading");
 
-  useEffect(() => {
+  const loadModels = useCallback(() => {
+    setCatalogState("loading");
     apiFetch<{ items: CatalogItem[] }>("/api/catalog")
-      .then((data) =>
+      .then((data) => {
         setModels(
           data.items
             .filter((item) => item.available && item.pricing)
             .sort((a, b) => Number(a.pricing!.input_rub_per_mtok) - Number(b.pricing!.input_rub_per_mtok))
             .slice(0, 6),
-        ),
-      )
-      .catch(() => setModels([]));
+        );
+        setCatalogState("ready");
+      })
+      .catch(() => setCatalogState("error"));
+  }, []);
+
+  useEffect(() => {
+    loadModels();
     apiFetch<{ user: unknown }>("/api/auth/me")
       .then(() => setSignedIn(true))
       .catch(() => setSignedIn(false));
-  }, []);
+  }, [loadModels]);
 
   return (
     <div className="rb-page">
@@ -103,7 +110,7 @@ export function Landing() {
           <div className="rb-grid">
             {FEATURES.map((feature) => (
               <article className="rb-stat" key={feature.title}>
-                <div className="rb-stat__label">{feature.title}</div>
+                <h3 className="rb-feature__title">{feature.title}</h3>
                 <p className="rb-muted" style={{ marginTop: 8 }}>
                   {feature.text}
                 </p>
@@ -115,26 +122,39 @@ export function Landing() {
         <section id="models" className="rb-card">
           <h2>Каталог моделей</h2>
           <p className="rb-muted">
-            Цены — в рублях за миллион токенов с учётом наценки платформы. Курс и наценка фиксируются в версии тарифа:
-            прошлые списания не меняются.
+            Цены — за 1 миллион токенов, уже с наценкой платформы. Курс и наценка фиксируются в версии тарифа: прошлые
+            списания не меняются.
           </p>
           <div className="rb-models" style={{ marginTop: 14 }}>
-            {models.map((model) => (
-              <article className="rb-model" key={model.id}>
-                <div className="rb-model__name">{model.name}</div>
-                <div className="rb-muted">{model.provider}</div>
-                <div className="rb-model__price">
-                  вход {formatNumber(model.pricing!.input_rub_per_mtok)} ₽/Мток
-                  <br />
-                  выход {formatNumber(model.pricing!.output_rub_per_mtok)} ₽/Мток
-                </div>
-                <div className="rb-muted" style={{ marginTop: 6 }}>
-                  {formatNumber(model.context_length)} токенов контекста
-                  {model.supports_tools ? " · tools" : ""}
-                </div>
-              </article>
-            ))}
-            {models.length === 0 ? <p className="rb-muted">Каталог обновляется. Загляните чуть позже.</p> : null}
+            {catalogState === "loading" ? <p className="rb-muted">Загружаем каталог…</p> : null}
+            {catalogState === "error" ? (
+              <div>
+                <p className="rb-muted">Не удалось загрузить каталог.</p>
+                <button className="rb-btn rb-btn--sm" type="button" onClick={loadModels}>
+                  Повторить
+                </button>
+              </div>
+            ) : null}
+            {catalogState === "ready"
+              ? models.map((model) => (
+                  <article className="rb-model" key={model.id}>
+                    <div className="rb-model__name">{model.name}</div>
+                    <div className="rb-muted">{model.provider}</div>
+                    <div className="rb-model__price">
+                      вход {formatNumber(model.pricing!.input_rub_per_mtok)} ₽ за 1 млн токенов
+                      <br />
+                      выход {formatNumber(model.pricing!.output_rub_per_mtok)} ₽ за 1 млн токенов
+                    </div>
+                    <div className="rb-muted" style={{ marginTop: 6 }}>
+                      {formatNumber(model.context_length)} токенов контекста
+                      {model.supports_tools ? " · вызов инструментов" : ""}
+                    </div>
+                  </article>
+                ))
+              : null}
+            {catalogState === "ready" && models.length === 0 ? (
+              <p className="rb-muted">Каталог пока пуст. Загляните чуть позже.</p>
+            ) : null}
           </div>
         </section>
 
