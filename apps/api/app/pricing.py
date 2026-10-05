@@ -25,12 +25,22 @@ def as_decimal(value: object) -> Decimal:
 
 
 def usd_per_mtok(usd_per_token: object) -> Decimal:
-    """Provider quotes USD per token; store USD per million tokens."""
-    return (as_decimal(usd_per_token) * TOKENS_PER_MTOK).quantize(RUB_PER_MTOK_QUANTUM)
+    """Provider quotes USD per token; store USD per million tokens.
+
+    Negative values are provider sentinels (for example ``-1`` for
+    auto-routing models), never real prices: they are rejected so a negative
+    price can never reach the catalog or a charge.
+    """
+    value = as_decimal(usd_per_token)
+    if value < 0:
+        raise ValueError("negative provider price")
+    return (value * TOKENS_PER_MTOK).quantize(RUB_PER_MTOK_QUANTUM)
 
 
 def rub_per_mtok(usd_per_mtok_value: Decimal, fx_rate: Decimal, markup: Decimal) -> Decimal:
     """USD/Mtok -> RUB/Mtok with FX and markup, rounded half-up to 6 decimals."""
+    if usd_per_mtok_value < 0:
+        raise ValueError("negative USD price")
     if fx_rate <= 0 or markup <= 0:
         raise ValueError("fx rate and markup must be positive")
     return (usd_per_mtok_value * fx_rate * markup).quantize(RUB_PER_MTOK_QUANTUM, rounding=ROUND_HALF_UP)

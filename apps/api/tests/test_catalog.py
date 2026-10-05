@@ -107,3 +107,42 @@ async def test_catalog_endpoint_exposes_rub_prices(client) -> None:
     assert item["pricing"]["output_rub_per_mtok"] == "240.000000"
     assert item["pricing"]["fx_rate"] == "100.00000000"
     assert item["pricing"]["markup"] == "1.2000"
+
+
+SENTINEL_FEED = [
+    {
+        "id": "openrouter/auto",
+        "name": "Auto Router",
+        "context_length": 200000,
+        "supported_parameters": ["tools"],
+        "architecture": {"input_modalities": ["text"]},
+        "pricing": {"prompt": "-1", "completion": "-1"},
+    }
+]
+
+
+async def test_sentinel_prices_are_never_quoted() -> None:
+    report = await sync(SENTINEL_FEED)
+    assert report.seen == 0
+    assert report.unavailable == 0
+    assert await pricing_rows() == []
+
+    from app.db import session_factory
+    from app.models import CatalogModel
+
+    async with session_factory()() as db:
+        models = (await db.execute(select(CatalogModel))).scalars().all()
+    assert models == []
+
+
+async def test_sentinel_price_retires_a_previously_valid_version() -> None:
+    await sync(FEED)
+    assert len(await pricing_rows()) == 1
+
+    # Feed switches to the -1 sentinel: the model must stop being quoted.
+    report = await sync([{**FEED[0], "pricing": {"prompt": "-1", "completion": "-1"}}])
+    assert report.unavailable == 1
+    assert report.repriced == 1
+    rows = await pricing_rows()
+    assert rows[0].retired_at is not None  # no active negative quote remains
+    assert rows[0].input_rub_per_mtok == Decimal("180.000000")  # history intact

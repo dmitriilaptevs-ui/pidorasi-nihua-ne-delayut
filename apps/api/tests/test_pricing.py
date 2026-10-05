@@ -55,3 +55,13 @@ def test_negative_inputs_are_rejected() -> None:
         rub_per_mtok(Decimal("1"), Decimal("0"), Decimal("1.2"))
     with pytest.raises(ValueError):
         as_decimal("not-a-number")
+
+
+def test_provider_sentinel_prices_are_rejected() -> None:
+    # OpenRouter publishes -1 for auto-routing models; it is not a price.
+    with pytest.raises(ValueError):
+        usd_per_mtok("-1")
+    with pytest.raises(ValueError):
+        usd_per_mtok(-0.000001)
+    with pytest.raises(ValueError):
+        rub_per_mtok(Decimal("-1"), Decimal("100"), Decimal("1.2"))
