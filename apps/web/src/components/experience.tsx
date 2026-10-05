@@ -2,15 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
-import type { AuthProvider, ExperienceProps } from "../lib/contracts";
+import type { AuthProvider, ExperienceProps, SignupMethod } from "../lib/contracts";
 import { LoginDialog } from "./login-dialog";
 import { ModelPicker } from "./model-picker";
 import { Workspace } from "./workspace";
 import "./experience.css";
 
-const PROVIDER_LABEL: Record<AuthProvider, string> = {
+const PROVIDER_LABEL: Record<SignupMethod, string> = {
   vk: "VK ID",
   yandex: "Яндекс ID",
+  password: "почта и пароль",
 };
 
 function PrimaryCta({ onClick }: { onClick: () => void }) {

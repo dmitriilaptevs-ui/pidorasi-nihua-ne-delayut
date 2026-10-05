@@ -88,9 +88,14 @@ export function Onboarding({ variant }: { variant: Variant }) {
       setAuthError(AUTH_ERRORS[errorCode] || "Вход не завершён. Попробуйте снова или проверьте настройки OAuth-приложения.");
       window.history.replaceState({}, "", `/${variant}${window.location.hash}`);
     }
-    jsonFetch<{ viewer: Viewer | null }>("/api/auth/session", { signal: controller.signal })
-      .then((data) => { if (!controller.signal.aborted) setViewer(data.viewer); })
-      .catch(() => { if (!controller.signal.aborted) setAuthError("Не удалось проверить сессию. Обновите страницу."); });
+    jsonFetch<{ user: { email: string; signup_method: string } }>("/api/auth/me", { signal: controller.signal })
+      .then((data) => { if (!controller.signal.aborted) setViewer({ name: data.user.email, provider: (data.user.signup_method as Viewer["provider"]) }); })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        // No session is a normal state, not an error banner.
+        if (error instanceof ClientApiError && error.status === 401) { setViewer(null); return; }
+        setAuthError("Не удалось проверить сессию. Обновите страницу.");
+      });
     jsonFetch<IntegrationStatus>("/api/status", { signal: controller.signal })
       .then((data) => { if (!controller.signal.aborted) setStatus(data); })
       .catch(() => { if (!controller.signal.aborted) setAuthError("Не удалось проверить настройки интеграций. Обновите страницу."); });

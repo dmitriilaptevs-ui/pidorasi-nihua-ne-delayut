@@ -24,6 +24,9 @@ RUN npm ci
 FROM node:24-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# Rewrites are compiled into the build; compose passes the API service origin.
+ARG API_ORIGIN=http://127.0.0.1:8080
+ENV API_ORIGIN=${API_ORIGIN}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

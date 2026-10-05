@@ -6,12 +6,13 @@ web server on import, they surface through /readyz instead.
 
 from __future__ import annotations
 
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, AsyncSession, create_async_engine
 from sqlalchemy import text
 
 from .settings import settings
 
 _engine: AsyncEngine | None = None
+_session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
 def engine() -> AsyncEngine:
@@ -25,6 +26,13 @@ def engine() -> AsyncEngine:
             connect_args={"timeout": 5},
         )
     return _engine
+
+
+def session_factory() -> async_sessionmaker[AsyncSession]:
+    global _session_factory
+    if _session_factory is None:
+        _session_factory = async_sessionmaker(engine(), expire_on_commit=False)
+    return _session_factory
 
 
 async def check_database() -> bool:

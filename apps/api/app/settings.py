@@ -16,5 +16,38 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://rubai:rubai@127.0.0.1:5432/rubai"
     redis_url: str = "redis://127.0.0.1:6379/0"
 
+    # Public web origin: cookie scope, links inside emails, Origin checks.
+    public_origin: str = "http://localhost:3001"
+    session_ttl_hours: int = 720
+    session_cookie_name: str = "rb_platform_session"
+
+    email_verify_ttl_hours: int = 24
+    password_reset_ttl_hours: int = 2
+    password_min_length: int = 10
+
+    # "console" prints mail to the service log (development); "smtp" sends it.
+    mail_transport: str = "console"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "no-reply@localhost"
+    smtp_starttls: bool = True
+
+    # Fixed-window throttles, per key (email+IP / IP / email).
+    throttle_login_limit: int = 10
+    throttle_login_window_minutes: int = 15
+    throttle_register_limit: int = 5
+    throttle_register_window_minutes: int = 60
+    throttle_reset_limit: int = 3
+    throttle_reset_window_minutes: int = 60
+
+    # OAuth providers (values are injected at runtime, never committed).
+    vk_client_id: str = ""
+    vk_app_type: str = "public"
+    vk_service_token: str = ""
+    yandex_client_id: str = ""
+    yandex_client_secret: str = ""
+
 
 settings = Settings()
