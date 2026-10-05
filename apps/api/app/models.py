@@ -250,7 +250,6 @@ class ReconciliationItem(Base):
 
 class Payment(Base):
     """Prepayment through a payment provider (sandbox by policy, ADR-0004)."""
-
     __tablename__ = "payments"
 
     id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -271,3 +270,35 @@ class Payment(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ApiRequest(Base):
+    """Per-request history (ТЗ 4.2): tokens, cost, tariff snapshot and status.
+
+    Written after the outcome is known so the row always reflects what was
+    actually billed (or why it was not).
+    """
+
+    __tablename__ = "api_requests"
+
+    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    api_key_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("api_keys.id", ondelete="SET NULL"), nullable=True
+    )
+    request_ref: Mapped[str] = mapped_column(String(64), index=True)
+    model: Mapped[str] = mapped_column(String(200))
+    provider: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # succeeded | upstream_error | ambiguous | reconciled
+    status: Mapped[str] = mapped_column(String(24), default="succeeded")
+    prompt_tokens: Mapped[int] = mapped_column(BigInteger, default=0)
+    completion_tokens: Mapped[int] = mapped_column(BigInteger, default=0)
+    cached_tokens: Mapped[int] = mapped_column(BigInteger, default=0)
+    cost_kopecks: Mapped[int] = mapped_column(BigInteger, default=0)
+    fx_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 8), nullable=True)
+    markup: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
+    price_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider_request_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -97,30 +97,34 @@ async def setup_account(*, balance_kopecks: int = 10_000, monthly_limit: int | N
         key, raw = await key_service.create_key(
             db, user=user, name="gateway-test", monthly_limit_kopecks=monthly_limit
         )
-        model = CatalogModel(
-            openrouter_id="acme/chat-1",
-            name="Acme Chat 1",
-            provider="acme",
-            context_length=4096,
-            supports_tools=True,
-            available=True,
-        )
-        db.add(model)
-        await db.flush()
-        db.add(
-            CatalogPricing(
-                model_id=model.id,
-                version=1,
-                input_usd_per_mtok=Decimal("1.5"),
-                output_usd_per_mtok=Decimal("2"),
-                cached_usd_per_mtok=None,
-                fx_rate=Decimal("100"),
-                markup=Decimal("1.2"),
-                input_rub_per_mtok=Decimal("180.000000"),
-                output_rub_per_mtok=Decimal("240.000000"),
-                cached_rub_per_mtok=None,
+        model = (
+            await db.execute(select(CatalogModel).where(CatalogModel.openrouter_id == "acme/chat-1"))
+        ).scalar_one_or_none()
+        if model is None:
+            model = CatalogModel(
+                openrouter_id="acme/chat-1",
+                name="Acme Chat 1",
+                provider="acme",
+                context_length=4096,
+                supports_tools=True,
+                available=True,
             )
-        )
+            db.add(model)
+            await db.flush()
+            db.add(
+                CatalogPricing(
+                    model_id=model.id,
+                    version=1,
+                    input_usd_per_mtok=Decimal("1.5"),
+                    output_usd_per_mtok=Decimal("2"),
+                    cached_usd_per_mtok=None,
+                    fx_rate=Decimal("100"),
+                    markup=Decimal("1.2"),
+                    input_rub_per_mtok=Decimal("180.000000"),
+                    output_rub_per_mtok=Decimal("240.000000"),
+                    cached_rub_per_mtok=None,
+                )
+            )
         await db.commit()
         return {"raw_key": raw, "user_id": user.id, "key_id": key.id, "wallet_id": wallet.id}
 
@@ -407,3 +411,100 @@ def test_estimate_reserve_never_below_one_kopeck() -> None:
     assert gw.estimate_reserve_kopecks(snapshot, messages=[{"role": "user", "content": "hi"}], max_tokens=1) >= 1
     free = gw.PricingSnapshot(input_rub_per_mtok=Decimal("0"), output_rub_per_mtok=Decimal("0"))
     assert gw.estimate_reserve_kopecks(free, messages=[{"role": "user", "content": "hi"}], max_tokens=10) == 0
+
+
+async def _request_rows():
+    from app.db import session_factory
+    from app.models import ApiRequest
+
+    async with session_factory()() as db:
+        return list((await db.execute(select(ApiRequest).order_by(ApiRequest.created_at))).scalars().all())
+
+
+async def test_successful_call_records_request_history(client) -> None:
+    account = await setup_account()
+    response = await client.post(
+        "/v1/chat/completions",
+        json=chat_body(),
+        headers={"authorization": f"Bearer {account['raw_key']}"},
+    )
+    assert response.status_code == 200
+    rows = await _request_rows()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.status == "succeeded"
+    assert row.prompt_tokens == 100
+    assert row.completion_tokens == 50
+    assert row.cost_kopecks == 3
+    assert row.model == "acme/chat-1"
+    assert row.provider == "acme"
+    assert row.price_version == 1
+    assert row.provider_request_id == "gen-1"
+
+
+async def test_upstream_error_records_history_without_cost(client) -> None:
+    account = await setup_account()
+    BEHAVIOR.status = 500
+    await client.post(
+        "/v1/chat/completions",
+        json=chat_body(),
+        headers={"authorization": f"Bearer {account['raw_key']}"},
+    )
+    rows = await _request_rows()
+    assert len(rows) == 1
+    assert rows[0].status == "upstream_error"
+    assert rows[0].cost_kopecks == 0
+
+
+async def test_stream_without_usage_records_reconciled(client) -> None:
+    account = await setup_account()
+    BEHAVIOR.kind = "stream"
+    BEHAVIOR.usage = None
+    await client.post(
+        "/v1/chat/completions",
+        json=chat_body(stream=True),
+        headers={"authorization": f"Bearer {account['raw_key']}"},
+    )
+    rows = await _request_rows()
+    assert len(rows) == 1
+    assert rows[0].status == "reconciled"
+    assert rows[0].cost_kopecks == 0
+
+
+async def test_requests_endpoint_lists_only_the_own_user(client) -> None:
+    from app.db import session_factory
+    from app.models import User
+    from app.services import identity as identity_service
+
+    account_a = await setup_account()
+    response = await client.post(
+        "/v1/chat/completions",
+        json=chat_body(),
+        headers={"authorization": f"Bearer {account_a['raw_key']}"},
+    )
+    assert response.status_code == 200
+
+    async with session_factory()() as db:
+        user_a = await db.get(User, account_a["user_id"])
+        assert user_a is not None
+        _, raw_token = await identity_service.create_session(db, user=user_a, method="password")
+        await db.commit()
+
+    client.cookies.set("rb_platform_session", raw_token)
+    listed = await client.get("/api/requests")
+    assert listed.status_code == 200
+    payload = listed.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["model"] == "acme/chat-1"
+    assert payload["items"][0]["cost_kopecks"] == 3
+
+    # Another account sees an empty history.
+    account_b = await setup_account()
+    async with session_factory()() as db:
+        user_b = await db.get(User, account_b["user_id"])
+        assert user_b is not None
+        _, raw_b = await identity_service.create_session(db, user=user_b, method="password")
+        await db.commit()
+    client.cookies.set("rb_platform_session", raw_b)
+    other = await client.get("/api/requests")
+    assert other.json()["total"] == 0

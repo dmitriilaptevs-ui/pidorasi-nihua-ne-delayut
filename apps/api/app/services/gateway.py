@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..errors import ApiError
-from ..models import ApiKey, CatalogModel, CatalogPricing, Reserve, User
+from ..models import ApiKey, ApiRequest, CatalogModel, CatalogPricing, Reserve, User
 from ..pricing import cost_rub
 from ..services import keys as key_service
 from ..services import ledger as ledger_service
@@ -254,6 +254,45 @@ def tokens_from_usage(usage: dict) -> dict[str, int]:
         "completion_tokens": int(usage.get("completion_tokens") or 0),
         "total_tokens": int(usage.get("total_tokens") or 0),
     }
+
+
+async def record_request(
+    db: AsyncSession,
+    *,
+    user_id,
+    api_key_id,
+    request_ref: str,
+    model_id: str,
+    provider: str | None,
+    status: str,
+    usage: dict | None = None,
+    cost_kopecks: int = 0,
+    pricing: CatalogPricing | None = None,
+    provider_request_id: str | None = None,
+) -> ApiRequest:
+    """Persist the per-request history row (ТЗ 4.2)."""
+    usage = usage or {}
+    details = usage.get("prompt_tokens_details")
+    cached = int(details.get("cached_tokens") or 0) if isinstance(details, dict) else 0
+    row = ApiRequest(
+        user_id=user_id,
+        api_key_id=api_key_id,
+        request_ref=request_ref,
+        model=model_id[:200],
+        provider=provider[:100] if provider else None,
+        status=status,
+        prompt_tokens=int(usage.get("prompt_tokens") or 0),
+        completion_tokens=int(usage.get("completion_tokens") or 0),
+        cached_tokens=cached,
+        cost_kopecks=cost_kopecks,
+        fx_rate=pricing.fx_rate if pricing is not None else None,
+        markup=pricing.markup if pricing is not None else None,
+        price_version=pricing.version if pricing is not None else None,
+        provider_request_id=provider_request_id[:120] if provider_request_id else None,
+    )
+    db.add(row)
+    await db.flush()
+    return row
 
 
 def ceil_kopecks(rub: Decimal) -> int:
