@@ -57,8 +57,16 @@ class Settings(BaseSettings):
     # defaults are placeholders until the owner fixes the commercial policy
     # (DECISIONS.md D-05).
     openrouter_api_base: str = "https://openrouter.ai/api/v1"
+    openrouter_api_key: str = ""
     fx_rate_rub_per_usd: Decimal = Decimal("100.0")
     price_markup: Decimal = Decimal("1.20")
+
+    # Gateway guardrails: bounded output and conservative input estimates.
+    gateway_default_max_tokens: int = 1024
+    gateway_max_output_tokens: int = 4096
+    gateway_max_input_chars: int = 200_000
+    gateway_timeout_seconds: float = 120.0
+    gateway_reserve_ttl_seconds: int = 600
 
 
 settings = Settings()
