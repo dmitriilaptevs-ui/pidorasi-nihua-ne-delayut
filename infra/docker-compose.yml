@@ -39,6 +39,10 @@ services:
   api:
     build:
       context: ../apps/api
+    env_file:
+      # Provider credentials and OpenRouter key live in the web env file; the
+      # api ignores names it does not define (extra="ignore").
+      - ../apps/web/.env.local
     environment:
       # development keeps console mail readable (no SMTP yet); switch to
       # production once SMTP credentials exist — console then suppresses tokens.

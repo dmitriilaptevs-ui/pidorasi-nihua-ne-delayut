@@ -15,6 +15,7 @@ from fastapi import FastAPI, Response
 from . import db, redis_client
 from .api.admin import admin_router
 from .api.identity import router as identity_router
+from .api.oauth import router as oauth_router
 from .errors import ApiError, api_error_handler
 from .settings import settings
 
@@ -43,6 +44,7 @@ app = FastAPI(
 
 app.add_exception_handler(ApiError, api_error_handler)
 app.include_router(identity_router)
+app.include_router(oauth_router)
 app.include_router(admin_router)
 
 

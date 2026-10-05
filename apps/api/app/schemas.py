@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
+
+
+class StartRequest(BaseModel):
+    provider: Literal["vk", "yandex"]
+    variant: Literal["canvas"] = "canvas"
 
 
 class RegisterRequest(BaseModel):
@@ -32,7 +38,8 @@ class ResetRequest(BaseModel):
 
 class UserView(BaseModel):
     id: uuid.UUID
-    email: str
+    email: str | None
+    display_name: str | None
     role: str
     status: str
     email_verified: bool
@@ -43,6 +50,7 @@ class UserView(BaseModel):
         return cls(
             id=user.id,  # type: ignore[attr-defined]
             email=user.email,  # type: ignore[attr-defined]
+            display_name=user.display_name,  # type: ignore[attr-defined]
             role=user.role,  # type: ignore[attr-defined]
             status=user.status,  # type: ignore[attr-defined]
             email_verified=user.email_verified_at is not None,  # type: ignore[attr-defined]
