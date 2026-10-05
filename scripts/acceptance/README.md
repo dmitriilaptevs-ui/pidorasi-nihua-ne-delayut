@@ -81,3 +81,48 @@ exits non-zero. `--token-source manual` unblocks single runs without a rebuild.
   for a free and a paid model, with a ledger cross-check of the recorded usage.
 - **payments replay** — YooKassa sandbox webhook duplicates/replays/forgeries
   and wrong amount/currency, asserting exactly one credit and refund records.
+
+## keys_catalog_live.py
+
+Covers the keys-catalog contract over HTTP plus read-only DB / separate-process
+witnesses:
+
+| Step | Assertion |
+| --- | --- |
+| verified account (register→verify→login) | session established |
+| unverified account | `POST /api/keys` → 403 `email_not_verified` |
+| key creation | 201, raw `sk-rubai-…` returned once, `item.prefix = raw[:16]`, no digest in the payload |
+| key list | prefix only; raw key and `key_hash` absent from the response |
+| DB witness | `key_hash == sha256(raw)`, prefix matches, raw key absent from the row |
+| pre-revoke auth (separate process) | `authenticate_api_key` → true |
+| ownership | a second user revoking the key → 404 `key_not_found` |
+| revoke | 200; the very next separate-process auth → false; propagation (raw elapsed minus process-startup baseline) < 5 s; `revoked_at` set |
+| public catalog | 200 anonymously, 465 items, every available model priced, non-negative, 6-decimal strings, parseable version/valid_from |
+| sync RBAC | anonymous 401, non-admin 403 `admin_required` |
+| sync consistency | `created+repriced+unchanged == seen` |
+| sync idempotency | second run: `created=0, repriced=0, unavailable=0, unchanged=seen` |
+| history | no active version/price/valid_from drifts on an idempotent sync; DB: no duplicate active versions, retired rows preserved |
+| decimal math (independent) | every DB row recomputed with stdlib `Decimal` half-up matches exactly |
+
+Run against the API directly, or through the web proxy (the production path):
+
+```bash
+PUB=$(grep -E '^PUBLIC_ORIGIN=' infra/.env | cut -d= -f2-)
+apps/api/.venv/bin/python scripts/acceptance/keys_catalog_live.py \
+    --base-url http://127.0.0.1:3001 --origin "$PUB"
+```
+
+`/healthz` and `/readyz` are not proxied, so health probes always go to
+`--health-base-url` (default `http://127.0.0.1:8080`). Register throttling is
+per client IP, so alternating direct/proxied runs use separate windows.
+
+### Known finding (2026-10-05): sentinel `-1` prices reach the catalog
+
+Seven auto-routing models (`openrouter/auto`, `openrouter/auto-beta`,
+`openrouter/bodybuilder`, `openrouter/fusion`, `openrouter/pareto-code`,
+`nvidia/switchyard`, `typesafe/jev-router`) carry `pricing.prompt = "-1"` in
+OpenRouter's feed. `usd_per_mtok` does not reject negatives, so the catalog
+publishes `-120000000.000000` RUB/Mtok (input and output) for them. The pack
+fails until the provider sentinel is rejected (or mapped to no pricing /
+unavailable); the gateway must not be able to turn this into a negative
+charge.
