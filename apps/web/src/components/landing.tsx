@@ -38,12 +38,11 @@ export function Landing() {
 
   const loadModels = useCallback(() => {
     setCatalogState("loading");
-    apiFetch<{ items: CatalogItem[] }>("/api/catalog")
+    apiFetch<{ items: CatalogItem[] }>("/api/catalog?limit=200&sort=price")
       .then((data) => {
         setModels(
           data.items
             .filter((item) => item.available && item.pricing)
-            .sort((a, b) => Number(a.pricing!.input_rub_per_mtok) - Number(b.pricing!.input_rub_per_mtok))
             .slice(0, 6),
         );
         setCatalogState("ready");

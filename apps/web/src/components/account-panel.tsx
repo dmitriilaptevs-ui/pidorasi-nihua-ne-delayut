@@ -33,6 +33,7 @@ export function AccountPanel() {
   const [keys, setKeys] = useState<KeyItem[]>([]);
   const [ledger, setLedger] = useState<LedgerItem[]>([]);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
+  const [catalogTotal, setCatalogTotal] = useState(0);
   const [reconciliation, setReconciliation] = useState<ReconciliationView[]>([]);
   const [syncReport, setSyncReport] = useState<string | null>(null);
   const [freshKey, setFreshKey] = useState<string | null>(null);
@@ -51,12 +52,13 @@ export function AccountPanel() {
       apiFetch<{ wallet: WalletState }>("/api/wallet"),
       apiFetch<{ items: KeyItem[] }>("/api/keys"),
       apiFetch<{ items: LedgerItem[] }>("/api/wallet/ledger"),
-      apiFetch<{ items: CatalogItem[] }>("/api/catalog"),
+      apiFetch<{ items: CatalogItem[]; total: number }>("/api/catalog?limit=100"),
     ]);
     setWallet(walletData.wallet);
     setKeys(keysData.items);
     setLedger(ledgerData.items);
     setCatalog(catalogData.items.filter((item) => item.available));
+    setCatalogTotal(catalogData.total);
     if (me.user.role === "admin") {
       const queue = await apiFetch<{ items: ReconciliationView[] }>("/api/admin/reconciliation");
       setReconciliation(queue.items);
@@ -385,7 +387,7 @@ export function AccountPanel() {
               ? visibleModels.length === 0
                 ? "Ничего не найдено — измените запрос."
                 : `Найдено: ${visibleModels.length}`
-              : `Показаны первые ${visibleModels.length} из ${catalog.length} моделей; уточните поиск, чтобы найти нужную.`}
+              : `Показаны первые ${visibleModels.length} из ${catalogTotal} моделей; уточните поиск, чтобы найти нужную.`}
           </p>
         </section>
 

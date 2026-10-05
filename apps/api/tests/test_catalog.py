@@ -98,7 +98,9 @@ async def test_catalog_endpoint_exposes_rub_prices(client) -> None:
     await sync(FEED)
     response = await client.get("/api/catalog")
     assert response.status_code == 200
-    items = response.json()["items"]
+    payload = response.json()
+    assert payload["total"] == 1
+    items = payload["items"]
     assert len(items) == 1
     item = items[0]
     assert item["id"] == "acme/chat-1"
@@ -107,6 +109,55 @@ async def test_catalog_endpoint_exposes_rub_prices(client) -> None:
     assert item["pricing"]["output_rub_per_mtok"] == "240.000000"
     assert item["pricing"]["fx_rate"] == "100.00000000"
     assert item["pricing"]["markup"] == "1.2000"
+
+
+def _many_models(count: int) -> list[dict]:
+    models = []
+    for index in range(count):
+        models.append(
+            {
+                "id": f"acme/model-{index:02d}",
+                "name": f"Model {index:02d}",
+                "context_length": 8192,
+                "supported_parameters": [],
+                "architecture": {"input_modalities": ["text"]},
+                "pricing": {"prompt": str(0.000001 * (index + 1)), "completion": "0.000002"},
+            }
+        )
+    return models
+
+
+async def test_catalog_pagination_search_and_sort(client) -> None:
+    await sync(_many_models(5))
+
+    first = (await client.get("/api/catalog?limit=2&offset=0")).json()
+    assert first["total"] == 5
+    assert len(first["items"]) == 2
+    assert first["items"][0]["id"] == "acme/model-00"
+
+    second = (await client.get("/api/catalog?limit=2&offset=2")).json()
+    assert [item["id"] for item in second["items"]] == ["acme/model-02", "acme/model-03"]
+
+    last = (await client.get("/api/catalog?limit=2&offset=4")).json()
+    assert len(last["items"]) == 1
+
+    searched = (await client.get("/api/catalog?q=model-03")).json()
+    assert searched["total"] == 1
+    assert searched["items"][0]["id"] == "acme/model-03"
+
+    cheap = (await client.get("/api/catalog?sort=price&limit=3")).json()
+    prices = [float(item["pricing"]["input_rub_per_mtok"]) for item in cheap["items"]]
+    assert prices == sorted(prices)
+
+    capped = (await client.get("/api/catalog?limit=999"))
+    assert capped.status_code == 422  # limit is bounded to protect the API
+
+
+async def test_catalog_response_is_cached(client) -> None:
+    await sync(FEED)
+    first = (await client.get("/api/catalog")).json()
+    second = (await client.get("/api/catalog")).json()
+    assert first == second
 
 
 SENTINEL_FEED = [
