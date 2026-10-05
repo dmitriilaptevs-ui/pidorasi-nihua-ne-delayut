@@ -25,7 +25,11 @@ export function AuthPanel({ mode, token = "" }: { mode: Mode; token?: string }) 
 
   // Verification/reset links are one-shot: exchange them on load.
   useEffect(() => {
-    if (mode !== "verify" || !token) return;
+    if (mode !== "verify") return;
+    if (!token) {
+      setError("В ссылке нет кода подтверждения. Откройте письмо и перейдите по ссылке целиком.");
+      return;
+    }
     setBusy(true);
     apiFetch<{ user: Viewer }>("/api/auth/verify-email", {
       method: "POST",
@@ -119,8 +123,8 @@ export function AuthPanel({ mode, token = "" }: { mode: Mode; token?: string }) 
         <div className="rb-card rb-card--narrow">
           <h1>{title}</h1>
 
-          {error ? <div className="rb-alert rb-alert--error">{error}</div> : null}
-          {notice ? <div className="rb-alert rb-alert--ok">{notice}</div> : null}
+          {error ? <div className="rb-alert rb-alert--error" role="alert">{error}</div> : null}
+          {notice ? <div className="rb-alert rb-alert--ok" role="status">{notice}</div> : null}
 
           {mode === "verify" ? (
             <div className="rb-actions">
@@ -175,10 +179,16 @@ export function AuthPanel({ mode, token = "" }: { mode: Mode; token?: string }) 
 
               <div className="rb-actions">
                 <button className="rb-btn" type="submit" disabled={busy}>
-                  {mode === "login" ? "Войти" : mode === "register" ? "Создать аккаунт" : "Сохранить пароль"}
+                  {busy ? "Отправляем…" : mode === "login" ? "Войти" : mode === "register" ? "Создать аккаунт" : "Сохранить пароль"}
                 </button>
                 {mode === "login" ? (
-                  <button className="rb-btn rb-btn--ghost" type="button" onClick={forgot} disabled={busy || !email}>
+                  <button
+                    className="rb-btn rb-btn--ghost"
+                    type="button"
+                    onClick={forgot}
+                    disabled={busy || !email}
+                    title={email ? undefined : "Сначала укажите адрес электронной почты"}
+                  >
                     Забыли пароль?
                   </button>
                 ) : null}
