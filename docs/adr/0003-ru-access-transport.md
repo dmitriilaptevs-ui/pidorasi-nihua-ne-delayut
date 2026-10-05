@@ -25,9 +25,14 @@
 | Вариант | Проверка | Результат |
 | --- | --- | --- |
 | Cloudflare Tunnel (quick) | cloudflared 2026.9.3, `--protocol http2` и `quic`, edge-ip 4 и 6 | **Не работает** с этого хоста: TCP — `TLS handshake with edge: EOF`, QUIC — timeout; 1.1.1.1 при этом отвечает нормально |
-| localhost.run | `ssh -R 80:localhost:3001 nokey@localhost.run` | **Работает**: публичный `https://<id>.lhr.life`, локально 200; владелец подтвердил открытие тестовой страницы с телефона в РФ без VPN; приложение отвечает через туннель (307 → /canvas, /api/status 200, POST с Origin туннеля не отклоняется) |
-| Tailscale Funnel | `tailscale funnel --bg 3001`, tailscale 1.102.4 | **Не включён** в tailnet: CLI отвечает «Funnel is not enabled on your tailnet» даже после попытки владельца включить на `/f/funnel`; требуется повторно включить Funnel (и убедиться, что включены HTTPS-сертификаты tailnet) |
+| localhost.run | `ssh -R 80:localhost:3001 nokey@localhost.run` | **Работает**: публичный `https://<id>.lhr.life`, локально 200 (TLS 0.44–0.48 с, TTFB 0.98–1.62 с); владелец подтвердил открытие с телефона в РФ без VPN; приложение отвечает через туннель |
+| Pinggy (free) | `ssh -R 80:localhost:3001 ...pinggy.io` | Работает с хоста: два URL, HTTP 200, TLS 0.54–0.69 с; подтверждение из РФ не проводилось |
+| Serveo | `ssh -R 80:localhost:3001 serveo.net` | Работает с хоста: HTTP 200, TLS 0.42 с; подтверждение из РФ не проводилось |
+| Tailscale Funnel | `tailscale funnel --bg 3001`, tailscale 1.102.4 | **Не включён** в tailnet: CLI отвечает «Funnel is not enabled on your tailnet»; нужны повторное включение Funnel владельцем и HTTPS-сертификаты tailnet |
+| sslip.io / прямой IP | — | **Неприменимо**: у хоста нет входящего публичного IP (NAT + kill switch); sslip.io без порт-форварда не работает |
 | Публичный VPS | — | Не арендован; требует явного согласия владельца на расходы |
+
+Подробные сырые логи и протокол измерений: [docs/reports/ru-access-matrix.md](../reports/ru-access-matrix.md).
 
 ## Текущее временное решение
 
@@ -35,9 +40,9 @@
 
 Ограничения и правила эксплуатации:
 
-- Поддомен `*.lhr.life` выдаётся на соединение и меняется при переподключении SSH; при смене URL обновлять `PUBLIC_ORIGIN` в `infra/.env` и перезапускать `web` (`docker compose up -d web`).
+- Поддомен `*.lhr.life` выдаётся на соединение и меняется при переподключении SSH; при смене URL обновлять `PUBLIC_ORIGIN` в `infra/.env` и перезапускать `web` (`docker compose up -d web`). Бесплатный стабильный поддомен localhost.run требует аккаунта и добавления SSH-ключа; у Pinggy/Serveo аналогично — бесплатные URL ротируются.
 - Стабильный постоянный адрес ожидается от Tailscale Funnel (`dima-laptop.tail4a5896.ts.net`) — предпочтительный вариант после включения, либо от собственного домена (вне текущего объёма).
-- OAuth-провайдеры (VK ID/Яндекс ID) должны быть перерегистрированы на публичный адрес; до этого живой вход через публичный туннель не проверяется.
+- OAuth-провайдеры (VK ID/Яндекс ID) должны быть перерегистрированы на публичный адрес; VK ID допускает localhost только на портах 80/443, поэтому живая проверка VK выполняется через локальный loopback-прокси, а не через туннель.
 
 ## Последствия
 
