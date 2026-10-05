@@ -36,14 +36,25 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3001/api/status
 
 ## Туннель
 
-| Вариант | Команда | Статус |
+| Вариант | Команда | Статус (2026-10-05) |
 | --- | --- | --- |
-| Tailscale Funnel | включить на <https://login.tailscale.com/f/funnel>, затем `tailscale funnel --bg 3001` | ожидает включения владельцем |
-| localhost.run | `ssh -R 80:localhost:3001 nokey@localhost.run` | проверено: выдаёт `https://<id>.lhr.life`, локально отвечает 200 |
-| Cloudflare Tunnel | `cloudflared tunnel --url http://127.0.0.1:3001` | проверено: edge недоступен с этого хоста (TCP и QUIC) |
+| localhost.run | `ssh -R 80:localhost:3001 nokey@localhost.run` | **Используется**: текущий адрес `https://8708c5f8153fe4.lhr.life`, владелец подтвердил открытие из РФ без VPN |
+| Tailscale Funnel | включить на <https://login.tailscale.com/f/funnel>, затем `tailscale funnel --bg 3001` | Не включён в tailnet — CLI отвечает «Funnel is not enabled»; ожидает повторного включения владельцем |
+| Cloudflare Tunnel | `cloudflared tunnel --url http://127.0.0.1:3001` | Не работает с этого хоста: edge недоступен (TCP handshake EOF и QUIC timeout) |
 
-После смены туннеля обновить `PUBLIC_ORIGIN` в `infra/.env` и перезапустить `web`:
+Поддомен localhost.run меняется при переподключении. После смены туннеля обновить `PUBLIC_ORIGIN` в `infra/.env` и перезапустить `web`:
 `docker compose up -d web`.
+
+## Выполненные проверки (2026-10-05)
+
+| Проверка | Результат |
+| --- | --- |
+| `docker compose up -d --build` | db/redis/api/web запущены, api `/readyz` → 200 `{database:true, redis:true}` |
+| Внешний адрес через туннель | `/` → 307 на `/canvas`, `/api/status` → 200, POST с Origin туннеля доходит до проверки сессии (401, не 403) |
+| Перезапуск контейнеров | `docker compose restart` → все четыре healthy, эндпоинты отвечают |
+| Backup → снос → restore | маркерная строка восстановлена из дампа (`drill-1 \| before-backup`) |
+| Изоляция портов | опубликованы только `127.0.0.1:3001` и `127.0.0.1:8080`; db/redis наружу не выставлены |
+| Влияние на рабочий стол | loopback-прокси `127.0.0.1:80`, `tailscaled` и `docker` не затронуты, хост не перезагружался |
 
 ## Backup и restore
 
