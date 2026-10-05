@@ -1,0 +1,85 @@
+# Reproducible stack for the laptop deployment (see ../../docs/adr/0002-hosting-topology.md).
+#
+#   cd infra && cp .env.example .env && edit .env
+#   docker compose up -d --build
+#
+# Only loopback ports are published: the public HTTPS entry is an outbound
+# tunnel on the host (Tailscale Funnel / Cloudflare Tunnel), never a forwarded
+# port. Secrets come from .env at runtime and are never committed.
+name: rubai
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rubai}
+      POSTGRES_USER: ${POSTGRES_USER:-rubai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/.env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-rubai} -d $${POSTGRES_DB:-rubai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 192m
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../apps/api
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rubai}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-rubai}
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/readyz', timeout=3).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    mem_limit: 512m
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../apps/web
+    env_file:
+      - ../apps/web/.env.local
+    environment:
+      # Public HTTPS origin served by the tunnel; overrides the local default.
+      APP_ORIGIN: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN in infra/.env}
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/status').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    mem_limit: 640m
+    restart: unless-stopped
+
+volumes:
+  db-data:

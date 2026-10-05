@@ -188,9 +188,11 @@ describe("provider readiness", () => {
     expect(publicAuthStatus()).toEqual({ vk: false, yandex: false });
   });
 
-  it("fails closed when APP_ORIGIN is not loopback", () => {
+  it("allows a public https origin while VK stays restricted to the default localhost port", () => {
     setEnv({ APP_ORIGIN: "https://example.com" });
-    expect(publicAuthStatus()).toEqual({ vk: false, yandex: false });
+    expect(publicAuthStatus()).toEqual({ vk: false, yandex: true });
+    setEnv({ APP_ORIGIN: "https://example.com:8443" });
+    expect(publicAuthStatus()).toEqual({ vk: false, yandex: true });
   });
 });
 
