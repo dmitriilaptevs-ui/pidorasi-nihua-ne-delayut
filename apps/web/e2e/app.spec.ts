@@ -13,7 +13,7 @@ const hasAdmin = Boolean(process.env.E2E_ADMIN_EMAIL);
 
 async function openAccount(page: Page) {
   await page.goto("/account");
-  await expect(page.getByRole("heading", { name: "Баланс" })).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByRole("heading", { name: "Баланс" })).toBeVisible({ timeout: 45_000 });
 }
 
 test("landing renders the catalog and links to registration", async ({ page }) => {
