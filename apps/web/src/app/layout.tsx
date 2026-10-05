@@ -9,8 +9,8 @@ import "@fontsource/unbounded/700.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "rubai — начните с идеи",
-  description: "Вход через VK ID или Яндекс ID и первый запрос к бесплатной AI-модели. Три варианта интерфейса.",
+  title: "rubai — доступ к AI-моделям за рубли",
+  description: "Регистрация, ключи платформы и OpenAI-совместимый API к зарубежным AI-моделям с оплатой в рублях.",
   robots: { index: false, follow: false },
 };
 
