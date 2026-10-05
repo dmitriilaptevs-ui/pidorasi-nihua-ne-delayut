@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     vk_service_token: str = ""
     yandex_client_id: str = ""
     yandex_client_secret: str = ""
+    oauth_bind_cookie_name: str = "rb_oauth_bind"
+    oauth_handshake_ttl_minutes: int = 10
 
 
 settings = Settings()

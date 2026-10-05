@@ -23,10 +23,15 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    # Nullable: OAuth-only accounts may have no email until they add one.
+    email: Mapped[str | None] = mapped_column(String(320), unique=True, index=True, nullable=True)
+    display_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     # password | vk | yandex — how the account was originally created.
     signup_method: Mapped[str] = mapped_column(String(16), default="password")
+    # External identity for OAuth signups; unique per provider.
+    oauth_provider: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    oauth_subject: Mapped[str | None] = mapped_column(String(64), nullable=True)
     role: Mapped[str] = mapped_column(String(16), default="user")
     status: Mapped[str] = mapped_column(String(16), default="active")
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -60,6 +65,26 @@ class EmailToken(Base):
     # verify_email | reset_password
     kind: Mapped[str] = mapped_column(String(24))
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class OAuthHandshake(Base):
+    """One-use OAuth handshake: state, PKCE verifier and browser binding.
+
+    Persisted so a restart between start and callback cannot lose a login and
+    so replay protection works across processes (row-locked consumption).
+    """
+
+    __tablename__ = "oauth_handshakes"
+
+    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    state_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    provider: Mapped[str] = mapped_column(String(16))
+    variant: Mapped[str] = mapped_column(String(16), default="canvas")
+    code_verifier: Mapped[str] = mapped_column(String(128))
+    bind_hash: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
