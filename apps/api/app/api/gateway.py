@@ -119,14 +119,24 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
         request_ref = uuid.uuid4().hex
         reserve: Reserve | None = None
         if reserve_kopecks > 0:
-            reserve = await ledger_service.reserve(
-                db,
-                wallet=wallet,
-                request_ref=request_ref,
-                amount_kopecks=reserve_kopecks,
-                api_key_id=api_key.id,
-                ttl_seconds=settings.gateway_reserve_ttl_seconds,
-            )
+            try:
+                reserve = await ledger_service.reserve(
+                    db,
+                    wallet=wallet,
+                    request_ref=request_ref,
+                    amount_kopecks=reserve_kopecks,
+                    api_key_id=api_key.id,
+                    ttl_seconds=settings.gateway_reserve_ttl_seconds,
+                )
+            except ApiError as exc:
+                if exc.code == "insufficient_funds":
+                    raise gw.GatewayError(
+                        402,
+                        "Insufficient balance for this request.",
+                        "insufficient_funds",
+                        "insufficient_quota",
+                    ) from None
+                raise
         await db.commit()
     except ApiError as exc:
         return _error_response(exc)

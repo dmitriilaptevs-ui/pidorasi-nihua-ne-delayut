@@ -193,23 +193,23 @@ async def monthly_spend_kopecks(db: AsyncSession, *, api_key_id) -> int:
 async def check_monthly_limit(
     db: AsyncSession, *, api_key: ApiKey, wallet, estimated_kopecks: int
 ) -> None:
-    if api_key.monthly_limit_kopecks is None:
-        return
-    spent = await monthly_spend_kopecks(db, api_key_id=api_key.id)
     state = ledger_service.wallet_state(wallet)
-    if spent + estimated_kopecks > api_key.monthly_limit_kopecks:
-        raise GatewayError(
-            429,
-            "Monthly key limit would be exceeded.",
-            "key_limit_exceeded",
-            "rate_limit_error",
-        )
     if estimated_kopecks > state["available_kopecks"]:
         raise GatewayError(
             402,
             "Insufficient balance for this request.",
             "insufficient_funds",
             "insufficient_quota",
+        )
+    if api_key.monthly_limit_kopecks is None:
+        return
+    spent = await monthly_spend_kopecks(db, api_key_id=api_key.id)
+    if spent + estimated_kopecks > api_key.monthly_limit_kopecks:
+        raise GatewayError(
+            429,
+            "Monthly key limit would be exceeded.",
+            "key_limit_exceeded",
+            "rate_limit_error",
         )
 
 
