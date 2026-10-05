@@ -126,3 +126,44 @@ publishes `-120000000.000000` RUB/Mtok (input and output) for them. The pack
 fails until the provider sentinel is rejected (or mapped to no pricing /
 unavailable); the gateway must not be able to turn this into a negative
 charge.
+
+**Update 2026-10-05 (after gateway):** `/v1/models` now returns 458 models with
+zero negative prices (the seven sentinel rows are no longer exposed), so this
+finding is closed on the deployment; the pack's non-negative assertion remains
+as a regression guard.
+
+## gateway_live.py
+
+Needs the `openai` SDK; a scratch venv works:
+`uv venv .venv && uv pip install openai httpx`.
+
+```bash
+.venv/bin/python scripts/acceptance/gateway_live.py \
+    --public-base-url "$(grep -E '^PUBLIC_ORIGIN=' infra/.env | cut -d= -f2-)"
+```
+
+| Step | Assertion |
+| --- | --- |
+| `/v1/models` raw | 200, `object=list`, ≥400 models, every item priced, no negative prices |
+| SDK `models.list` | direct API and the deployed HTTPS origin return the same ids |
+| 401 | missing → `missing_api_key`; invalid and revoked → `invalid_api_key`; SDK `AuthenticationError` |
+| 404 | unknown model → `model_not_found`; SDK `NotFoundError` |
+| 400 | `max_tokens=0` → `invalid_max_tokens` |
+| 402 | zero-balance account → `insufficient_funds`, **no reserve row**; with the provider key absent, a 402 (not 503) proves the funds gate ran before any upstream call |
+| 429 | key with `monthly_limit_kopecks=0` → `key_limit_exceeded`; SDK `RateLimitError` |
+| reserve-before-send | funded call with no provider key: reserve rows with `amount>0` exist and are `released`; a resolved reconciliation record `released/upstream_not_configured` is written; wallet `reserved` returns to its prior value; no open reconciliation items |
+| SSE | `stream=true` fails identically and releases its reserve (both raw and SDK calls counted) |
+| free+paid live call | BLOCKED until `OPENROUTER_API_KEY` is configured; needs the owner's key |
+
+Notes:
+
+- The SDK client is built with `max_retries=0` so every observed status is a
+  single request.
+- The pack mutates sandbox state on purpose: it creates a zero-balance verified
+  account through `app.cli create-admin` and credits the admin wallet through
+  the documented `POST /api/admin/wallet/credit` endpoint (unique reference per
+  run). DB witnesses are read-only.
+- asyncpg returns JSONB as strings; the witness parses `payload` before reading
+  the release reason.
+- Result 2026-10-05 on main `8de5126` (gateway image): **20/21 passed, 1
+  blocked** (owner provider key).

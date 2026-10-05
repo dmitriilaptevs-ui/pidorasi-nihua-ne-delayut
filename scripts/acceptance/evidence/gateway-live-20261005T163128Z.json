@@ -1,0 +1,222 @@
+{
+  "pack": "identity-live",
+  "started_at": "2026-10-05T16:31:03.747681+00:00",
+  "finished_at": "2026-10-05T16:31:28.320854+00:00",
+  "summary": {
+    "total": 21,
+    "passed": 20,
+    "failed": 1,
+    "blocked": 1
+  },
+  "notes": [
+    "base_url=http://127.0.0.1:8080",
+    "api_container=rubai-api-1",
+    "api_image=sha256:866f35da3f95f88186ef6abc538522ea675cc3ae2c37825b888619e8d32b1df5 2026-10-05T16:26:19.12736409Z",
+    "provider_key_configured=False"
+  ],
+  "steps": [
+    {
+      "area": "liveness /healthz",
+      "expected": "HTTP 200",
+      "observed": "HTTP 200",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "liveness /readyz",
+      "expected": "HTTP 200",
+      "observed": "HTTP 200",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "admin session",
+      "expected": "login as admin",
+      "observed": "established",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "v1/models raw shape and pricing",
+      "expected": "HTTP 200, object=list, >=400 models, every item priced and non-negative",
+      "observed": "HTTP 200, count=458, negative=0",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "OpenAI SDK models.list",
+      "expected": "same model ids as raw HTTP",
+      "observed": "SDK count=458",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "OpenAI SDK models.list via deployed origin",
+      "expected": "same ids through the public HTTPS base URL",
+      "observed": "https://94ae640b89193f.lhr.life: count=458",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "cheap paid model available",
+      "expected": "an available model with a positive price",
+      "observed": "aion-labs/aion-2.0",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "platform key for gateway",
+      "expected": "HTTP 201 with raw key",
+      "observed": "HTTP 201 raw=len=41 sha256=3eb4d6c899e3",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "401 missing key",
+      "expected": "HTTP 401 missing_api_key",
+      "observed": "HTTP 401 missing_api_key",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "401 invalid key",
+      "expected": "HTTP 401 invalid_api_key; SDK AuthenticationError",
+      "observed": "HTTP 401 invalid_api_key; SDK AuthenticationError 401 ",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "401 revoked key",
+      "expected": "HTTP 401 invalid_api_key",
+      "observed": "HTTP 401 invalid_api_key",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "404 model_not_found",
+      "expected": "HTTP 404 model_not_found; SDK NotFoundError",
+      "observed": "HTTP 404 model_not_found; SDK NotFoundError 404 ",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "400 invalid max_tokens",
+      "expected": "HTTP 400 invalid_max_tokens",
+      "observed": "HTTP 400 invalid_max_tokens",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "402 insufficient funds before upstream",
+      "expected": "HTTP 402 insufficient_funds; no reserve row created; SDK APIStatusError 402",
+      "observed": "HTTP 402 insufficient_funds; SDK APIStatusError 402 ",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "402 left no reserve",
+      "expected": "zero reserves for the failed request",
+      "observed": "[]",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "429 monthly key limit before upstream",
+      "expected": "HTTP 429 key_limit_exceeded; SDK RateLimitError",
+      "observed": "HTTP 429 key_limit_exceeded; SDK RateLimitError 429 ",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "sandbox credit via admin endpoint",
+      "expected": "HTTP 200, balance increases",
+      "observed": "HTTP 200 balance 3000 -> 4000",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "503 upstream_not_configured after reserve commit",
+      "expected": "reserve row with amount>0 exists and is released; wallet projections restored; resolved reconciliation, no open items",
+      "observed": "HTTP 503 upstream_not_configured; SDK InternalServerError 503 ; reserves=2 released=2 released_items=2 reserved 0->0",
+      "ok": true,
+      "blocked": false,
+      "detail": {
+        "reserves": [
+          {
+            "request_ref": "7be19d4a5c0f4eb0aa9515cc59731ac3",
+            "amount_kopecks": 1,
+            "status": "released",
+            "created_at": "2026-10-05 16:31:22.119206+00:00",
+            "released_at": "2026-10-05 16:31:22.176721+00:00"
+          },
+          {
+            "request_ref": "e37397be646d4908bfc77bf56cb69410",
+            "amount_kopecks": 1,
+            "status": "released",
+            "created_at": "2026-10-05 16:31:22.309112+00:00",
+            "released_at": "2026-10-05 16:31:22.347851+00:00"
+          }
+        ],
+        "reconciliation": [
+          {
+            "request_ref": "7be19d4a5c0f4eb0aa9515cc59731ac3",
+            "kind": "released",
+            "status": "resolved",
+            "payload": "{\"reason\": \"upstream_not_configured\"}"
+          },
+          {
+            "request_ref": "e37397be646d4908bfc77bf56cb69410",
+            "kind": "released",
+            "status": "resolved",
+            "payload": "{\"reason\": \"upstream_not_configured\"}"
+          }
+        ],
+        "wallet": {
+          "balance_kopecks": 4000,
+          "reserved_kopecks": 0
+        }
+      }
+    },
+    {
+      "area": "503 for SSE request releases its reserve",
+      "expected": "same upstream_not_configured error on stream=true; reserve released; no residue",
+      "observed": "HTTP 503 upstream_not_configured content-type=application/json; SDK InternalServerError 503 ; released=4 reserved=0",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "no open reconciliation items from clean failures",
+      "expected": "open item count unchanged",
+      "observed": "open 0 -> 0",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "free and paid live call with real usage",
+      "expected": "200 + usage settled in the ledger",
+      "observed": "BLOCKED: OPENROUTER_API_KEY is not configured in the api container; owner key pending",
+      "ok": false,
+      "blocked": true,
+      "detail": null
+    }
+  ]
+}
