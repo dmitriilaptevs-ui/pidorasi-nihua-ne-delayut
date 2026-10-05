@@ -105,7 +105,7 @@ async def clean_database() -> Any:
                 text(
                     "TRUNCATE TABLE email_tokens, auth_sessions, oauth_handshakes, api_keys, "
                     "catalog_pricing, catalog_models, ledger_postings, ledger_transactions, "
-                    "reconciliation_items, reserves, wallets, users CASCADE"
+                    "reconciliation_items, reserves, wallets, payments, users CASCADE"
                 )
             )
             await db.commit()
