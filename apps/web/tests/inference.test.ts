@@ -86,8 +86,12 @@ describe("local request boundary", () => {
     await expect(readBoundedResponse(new Response(body), 100)).rejects.toThrow();
     expect(cancelled).toBe(true);
   });
-  it("rejects non-loopback origins and invalid VK application types in config", () => {
+  it("requires https for public origins, rejects paths and invalid VK application types", () => {
+    vi.stubEnv("APP_ORIGIN", "http://public.example");
+    expect(() => config()).toThrow();
     vi.stubEnv("APP_ORIGIN", "https://public.example");
+    expect(() => config()).not.toThrow();
+    vi.stubEnv("APP_ORIGIN", "https://public.example/path");
     expect(() => config()).toThrow();
     vi.stubEnv("APP_ORIGIN", "http://localhost/path");
     expect(() => config()).toThrow();
