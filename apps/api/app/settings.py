@@ -68,5 +68,14 @@ class Settings(BaseSettings):
     gateway_timeout_seconds: float = 120.0
     gateway_reserve_ttl_seconds: int = 600
 
+    # Payments. Sandbox only by policy (ADR-0004); "fake" is a local provider
+    # used by tests, "yookassa" talks to the documented API.
+    payments_provider: str = "yookassa"
+    yookassa_shop_id: str = ""
+    yookassa_secret_key: str = ""
+    yookassa_api_base: str = "https://api.yookassa.ru/v3"
+    payments_min_kopecks: int = 10000
+    payments_max_kopecks: int = 10_000_000
+
 
 settings = Settings()

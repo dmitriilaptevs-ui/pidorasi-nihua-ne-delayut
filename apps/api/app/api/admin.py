@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..deps import get_db, require_admin
 from ..errors import ApiError
-from ..models import ReconciliationItem, User
-from ..schemas import CreditRequest
+from ..models import Payment, ReconciliationItem, User
+from ..schemas import CreditRequest, RefundRequest
 from ..services import catalog as catalog_service
 from ..services import identity as identity_service
 from ..services import ledger as ledger_service
+from ..services import payments as payment_service
 
 admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -58,6 +61,50 @@ async def credit_wallet(
     await db.commit()
     await db.refresh(wallet)
     return {"user": target.email, "wallet": ledger_service.wallet_state(wallet)}
+
+
+
+@admin_router.get("/payments")
+async def admin_payments(
+    _: User = Depends(require_admin), db: AsyncSession = Depends(get_db)
+) -> dict[str, object]:
+    rows = (
+        await db.execute(select(Payment).order_by(Payment.created_at.desc()).limit(100))
+    ).scalars().all()
+    return {
+        "items": [
+            {
+                "id": str(row.id),
+                "provider_payment_id": row.provider_payment_id,
+                "amount_kopecks": row.amount_kopecks,
+                "refunded_kopecks": row.refunded_kopecks,
+                "status": row.status,
+                "created_at": row.created_at.isoformat(),
+            }
+            for row in rows
+        ]
+    }
+
+
+@admin_router.post("/payments/{payment_id}/refund")
+async def admin_refund(
+    payment_id: uuid.UUID,
+    payload: RefundRequest,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    payment = await db.get(Payment, payment_id)
+    if payment is None:
+        raise ApiError(404, "payment_not_found", "Платёж не найден.")
+    payment, refund_id = await payment_service.refund_payment(
+        db, payment=payment, amount_kopecks=payload.amount_kopecks
+    )
+    await db.commit()
+    return {
+        "refund_id": refund_id,
+        "status": payment.status,
+        "refunded_kopecks": payment.refunded_kopecks,
+    }
 
 
 @admin_router.get("/reconciliation")

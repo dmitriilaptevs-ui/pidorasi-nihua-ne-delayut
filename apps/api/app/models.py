@@ -246,3 +246,28 @@ class ReconciliationItem(Base):
     status: Mapped[str] = mapped_column(String(16), default="open")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Payment(Base):
+    """Prepayment through a payment provider (sandbox by policy, ADR-0004)."""
+
+    __tablename__ = "payments"
+
+    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(16), default="yookassa")
+    provider_payment_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    idempotence_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    amount_kopecks: Mapped[int] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(8), default="RUB")
+    # pending | succeeded | canceled | refunded | partially_refunded
+    status: Mapped[str] = mapped_column(String(24), default="pending")
+    confirmation_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    refunded_kopecks: Mapped[int] = mapped_column(BigInteger, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -19,6 +19,7 @@ from .api.gateway import router as gateway_router
 from .api.identity import router as identity_router
 from .api.keys import router as keys_router
 from .api.oauth import router as oauth_router
+from .api.payments import router as payments_router
 from .api.wallet import router as wallet_router
 from .errors import ApiError, api_error_handler
 from .settings import settings
@@ -52,6 +53,7 @@ app.include_router(oauth_router)
 app.include_router(keys_router)
 app.include_router(catalog_router)
 app.include_router(gateway_router)
+app.include_router(payments_router)
 app.include_router(wallet_router)
 app.include_router(admin_router)
 
