@@ -1,0 +1,358 @@
+/* Canvas-palette pages: auth forms, account dashboard, landing extras. */
+
+.rb-page {
+  min-height: 100vh;
+  background:
+    repeating-linear-gradient(0deg, rgba(22, 20, 15, 0.035) 0 1px, transparent 1px 26px),
+    #f1e8d3;
+  color: #16140f;
+  font-family: "Manrope", system-ui, sans-serif;
+}
+
+.rb-page__wrap {
+  width: min(1080px, 100% - 40px);
+  margin: 0 auto;
+  padding: 28px 0 64px;
+}
+
+.rb-page__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 3px solid #16140f;
+  background: #fffdf4;
+  box-shadow: 6px 6px 0 #16140f;
+  margin-bottom: 28px;
+}
+
+.rb-page__brand {
+  font-family: "Unbounded", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  text-decoration: none;
+  color: #16140f;
+}
+
+.rb-page__links {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rb-page__links a {
+  color: #16140f;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+.rb-page__links a:hover {
+  border-bottom-color: #b4e000;
+}
+
+.rb-card {
+  border: 3px solid #16140f;
+  background: #fffdf4;
+  box-shadow: 8px 8px 0 #16140f;
+  padding: 22px;
+  margin-bottom: 24px;
+}
+
+.rb-card--narrow {
+  width: min(520px, 100%);
+  margin: 40px auto;
+}
+
+.rb-card h1,
+.rb-card h2 {
+  font-family: "Unbounded", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+}
+
+.rb-card h1 {
+  font-size: 26px;
+}
+
+.rb-card h2 {
+  font-size: 19px;
+}
+
+.rb-card p {
+  line-height: 1.55;
+  color: #49432f;
+}
+
+.rb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.rb-field label {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.rb-field input,
+.rb-field select,
+.rb-field textarea {
+  border: 2px solid #16140f;
+  background: #fff;
+  padding: 12px 14px;
+  font-size: 15px;
+  border-radius: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.rb-field input:focus-visible,
+.rb-field select:focus-visible {
+  outline: 3px solid #b4e000;
+  outline-offset: 1px;
+}
+
+.rb-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.rb-btn {
+  border: 3px solid #16140f;
+  background: #b4e000;
+  color: #16140f;
+  font-weight: 800;
+  padding: 12px 20px;
+  box-shadow: 4px 4px 0 #16140f;
+  font-size: 15px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rb-btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 #16140f;
+}
+
+/* Touch devices trigger hover styles on tap, which moves the element while the
+   finger is down. Only apply hover motion where a pointer can hover. */
+@media (hover: none) {
+  .rb-btn:hover:not(:disabled) {
+    transform: none;
+    box-shadow: 4px 4px 0 #16140f;
+  }
+}
+
+.rb-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rb-btn:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.rb-btn--ghost {
+  background: #fffdf4;
+  font-weight: 700;
+}
+
+.rb-btn--danger {
+  background: #ffd9d4;
+}
+
+.rb-btn--sm {
+  padding: 8px 12px;
+  font-size: 13px;
+  box-shadow: 3px 3px 0 #16140f;
+}
+
+.rb-alert {
+  border: 2px solid #16140f;
+  padding: 12px 14px;
+  margin: 12px 0;
+  font-weight: 600;
+  background: #fff4cf;
+}
+
+.rb-alert--error {
+  background: #ffe1dc;
+}
+
+.rb-alert--ok {
+  background: #e9f7c8;
+}
+
+.rb-muted {
+  color: #5d5746;
+  font-size: 14px;
+}
+
+.rb-badge {
+  display: inline-block;
+  border: 2px solid #16140f;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #ece1c5;
+}
+
+.rb-badge--ok {
+  background: #b4e000;
+}
+
+.rb-badge--warn {
+  background: #ffd9d4;
+}
+
+.rb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.rb-table th,
+.rb-table td {
+  border-bottom: 2px solid #16140f;
+  padding: 9px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rb-table th {
+  font-family: "Unbounded", system-ui, sans-serif;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rb-table__num {
+  font-variant-numeric: tabular-nums;
+}
+
+.rb-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.rb-stat {
+  border: 3px solid #16140f;
+  background: #fffdf4;
+  padding: 16px;
+  box-shadow: 5px 5px 0 #16140f;
+}
+
+.rb-stat__label {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #49432f;
+  font-weight: 700;
+}
+
+.rb-stat__value {
+  font-family: "Unbounded", system-ui, sans-serif;
+  font-size: 22px;
+  margin-top: 6px;
+}
+
+.rb-key {
+  border: 2px dashed #16140f;
+  background: #fff4cf;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 15px;
+  word-break: break-all;
+  margin: 10px 0;
+}
+
+.rb-models {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.rb-model {
+  border: 3px solid #16140f;
+  background: #fffdf4;
+  padding: 16px;
+  box-shadow: 5px 5px 0 #16140f;
+}
+
+.rb-model__name {
+  font-weight: 800;
+  font-size: 16px;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.rb-model__price {
+  font-variant-numeric: tabular-nums;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.rb-steps {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  counter-reset: step;
+}
+
+.rb-step {
+  border: 3px solid #16140f;
+  background: #fffdf4;
+  padding: 16px;
+  box-shadow: 5px 5px 0 #16140f;
+}
+
+.rb-step::before {
+  counter-increment: step;
+  content: counter(step);
+  font-family: "Unbounded", system-ui, sans-serif;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  background: #b4e000;
+  border: 2px solid #16140f;
+  margin-bottom: 10px;
+}
+
+.rb-footer {
+  margin-top: 40px;
+  padding-top: 18px;
+  border-top: 3px solid #16140f;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #49432f;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .rb-page__wrap {
+    width: min(1080px, 100% - 24px);
+    padding-top: 16px;
+  }
+
+  .rb-card,
+  .rb-stat,
+  .rb-model,
+  .rb-step {
+    box-shadow: 5px 5px 0 #16140f;
+  }
+}

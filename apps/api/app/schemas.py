@@ -43,6 +43,14 @@ class CreditRequest(BaseModel):
     reference: str = Field(min_length=3, max_length=120)
 
 
+class PaymentCreateRequest(BaseModel):
+    amount_kopecks: int = Field(ge=1, le=100_000_000)
+
+
+class RefundRequest(BaseModel):
+    amount_kopecks: int | None = Field(default=None, ge=1)
+
+
 class KeyCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     monthly_limit_kopecks: int | None = Field(default=None, ge=0)

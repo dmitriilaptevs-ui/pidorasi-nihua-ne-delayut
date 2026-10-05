@@ -1,3 +1,5 @@
-import { redirect } from "next/navigation";
+import { Landing } from "@/components/landing";
 
-export default function Home() { redirect("/canvas"); }
+export default function Home() {
+  return <Landing />;
+}
