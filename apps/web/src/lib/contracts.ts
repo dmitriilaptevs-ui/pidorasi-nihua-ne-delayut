@@ -1,6 +1,8 @@
 export const VARIANTS = ["canvas"] as const;
 export type Variant = (typeof VARIANTS)[number];
 export type AuthProvider = "vk" | "yandex";
+/** How the account was created; also used to label the signed-in viewer. */
+export type SignupMethod = AuthProvider | "password";
 
 export interface ModelOption {
   id: string;
@@ -11,7 +13,7 @@ export interface ModelOption {
 
 export interface Viewer {
   name: string;
-  provider: AuthProvider;
+  provider: SignupMethod;
 }
 
 export interface IntegrationStatus {

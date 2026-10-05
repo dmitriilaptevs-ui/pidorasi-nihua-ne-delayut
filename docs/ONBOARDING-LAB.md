@@ -70,6 +70,24 @@ E2E fixtures не попадают в runtime приложения. Успех o
 
 Запуск, конфигурация и ручная live-приёмка: [apps/web/README.md](../apps/web/README.md).
 
+## Переход на backend identity (2026-10-05)
+
+BFF-маршруты входа из этой итерации (`/api/auth/start`, `/api/auth/callback/*`, `/api/auth/session`, `/api/auth/logout`) **выведены из apps/web** и заменены серверной идентификацией в `apps/api`:
+
+| Метод | Путь | Назначение |
+| --- | --- | --- |
+| GET | `/api/auth/providers` | какие способы входа настроены |
+| POST | `/api/auth/register` | регистрация email+пароль, письмо с подтверждением |
+| POST | `/api/auth/verify-email` | одноразовое подтверждение адреса |
+| POST | `/api/auth/login` | вход, durable-сессия в cookie |
+| POST | `/api/auth/logout` | отзыв сессии |
+| GET | `/api/auth/me` | текущий пользователь |
+| POST | `/api/auth/password/forgot` | письмо для сброса пароля |
+| POST | `/api/auth/password/reset` | сброс и отзыв всех сессий |
+| GET | `/api/admin/whoami` | пример RBAC-эндпоинта (только admin) |
+
+Данные — в PostgreSQL (миграции Alembic), сессии — durable, ограничения — в Redis; пароли — Argon2id, токены хранятся только хешами. Вход VK ID и Яндекс ID переносится в тот же сервис; до переноса кнопки провайдеров в интерфейсе недоступны. Консольный транспорт писем печатает ссылки только вне production.
+
 ## Источники интеграций
 
 - [VK ID — настройка приложения и localhost](https://id.vk.ru/about/business/go/docs/ru/vkid/latest/vk-id/connection/create-application).

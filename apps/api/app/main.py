@@ -7,12 +7,23 @@ stays the composition root.
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response
 
 from . import db, redis_client
+from .api.admin import admin_router
+from .api.identity import router as identity_router
+from .errors import ApiError, api_error_handler
 from .settings import settings
+
+# Container logs carry service messages only; secrets are never logged. The
+# console mail transport prints verification links in development only.
+# force=True matters when a log config (e.g. uvicorn --log-config) already
+# installed root handlers before this module is imported.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s", force=True)
+logging.getLogger("rubai").setLevel(logging.INFO)
 
 
 @asynccontextmanager
@@ -29,6 +40,10 @@ app = FastAPI(
     redoc_url=None,
     lifespan=lifespan,
 )
+
+app.add_exception_handler(ApiError, api_error_handler)
+app.include_router(identity_router)
+app.include_router(admin_router)
 
 
 @app.get("/")
