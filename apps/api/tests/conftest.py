@@ -79,6 +79,20 @@ async def client() -> Any:
         yield test_client
 
 
+@pytest.fixture
+async def verified_client(client: Any, mailbox: list[dict[str, str]]) -> Any:
+    """A client whose user is registered, verified and signed in."""
+    email = "verified@example.com"
+    password = "verified-password-1"
+    await client.post("/api/auth/register", json={"email": email, "password": password})
+    match = TOKEN_RE.search(mailbox[-1]["text"])
+    assert match is not None
+    await client.post("/api/auth/verify-email", json={"token": match.group(1)})
+    response = await client.post("/api/auth/login", json={"email": email, "password": password})
+    assert response.status_code == 200
+    return client
+
+
 @pytest.fixture(autouse=True)
 async def clean_database() -> Any:
     from sqlalchemy import text
@@ -87,7 +101,12 @@ async def clean_database() -> Any:
 
     async def truncate() -> None:
         async with session_factory()() as db:
-            await db.execute(text("TRUNCATE TABLE email_tokens, auth_sessions, users CASCADE"))
+            await db.execute(
+                text(
+                    "TRUNCATE TABLE email_tokens, auth_sessions, oauth_handshakes, api_keys, "
+                    "catalog_pricing, catalog_models, users CASCADE"
+                )
+            )
             await db.commit()
 
     await truncate()

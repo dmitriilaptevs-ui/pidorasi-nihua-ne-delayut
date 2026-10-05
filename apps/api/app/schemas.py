@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -34,6 +35,33 @@ class ForgotRequest(BaseModel):
 class ResetRequest(BaseModel):
     token: str = Field(min_length=20, max_length=200)
     password: str = Field(min_length=10, max_length=200)
+
+
+class KeyCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    monthly_limit_kopecks: int | None = Field(default=None, ge=0)
+
+
+class KeyView(BaseModel):
+    id: uuid.UUID
+    name: str
+    prefix: str
+    created_at: datetime
+    revoked_at: datetime | None
+    last_used_at: datetime | None
+    monthly_limit_kopecks: int | None
+
+    @classmethod
+    def of(cls, key: object) -> "KeyView":
+        return cls(
+            id=key.id,  # type: ignore[attr-defined]
+            name=key.name,  # type: ignore[attr-defined]
+            prefix=key.prefix,  # type: ignore[attr-defined]
+            created_at=key.created_at,  # type: ignore[attr-defined]
+            revoked_at=key.revoked_at,  # type: ignore[attr-defined]
+            last_used_at=key.last_used_at,  # type: ignore[attr-defined]
+            monthly_limit_kopecks=key.monthly_limit_kopecks,  # type: ignore[attr-defined]
+        )
 
 
 class UserView(BaseModel):
