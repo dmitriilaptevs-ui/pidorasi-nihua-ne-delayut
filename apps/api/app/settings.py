@@ -5,6 +5,8 @@ exist so a developer can start the service locally; deployments must inject
 real values through container environment variables.
 """
 
+from decimal import Decimal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -50,6 +52,13 @@ class Settings(BaseSettings):
     yandex_client_secret: str = ""
     oauth_bind_cookie_name: str = "rb_oauth_bind"
     oauth_handshake_ttl_minutes: int = 10
+
+    # Catalog and commercial pricing. FX and markup are configurable; the
+    # defaults are placeholders until the owner fixes the commercial policy
+    # (DECISIONS.md D-05).
+    openrouter_api_base: str = "https://openrouter.ai/api/v1"
+    fx_rate_rub_per_usd: Decimal = Decimal("100.0")
+    price_markup: Decimal = Decimal("1.20")
 
 
 settings = Settings()
