@@ -1,0 +1,174 @@
+{
+  "pack": "identity-live",
+  "started_at": "2026-10-05T16:02:00.335488+00:00",
+  "finished_at": "2026-10-05T16:02:16.056799+00:00",
+  "summary": {
+    "total": 19,
+    "passed": 19,
+    "failed": 0,
+    "blocked": 0
+  },
+  "notes": [
+    "base_url=http://127.0.0.1:8080",
+    "api_container=rubai-api-1",
+    "api_image=sha256:74512df3fc1b31bbc4a2eece2af5d825ea658d72f3e802955b97bd5aecdeacf1 2026-10-05T16:00:48.414025976Z",
+    "test_account=acceptance+20261005t160201z-2795c8@example.com"
+  ],
+  "steps": [
+    {
+      "area": "liveness /healthz",
+      "expected": "HTTP 200",
+      "observed": "HTTP 200 {\"status\":\"ok\"}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "liveness /readyz",
+      "expected": "HTTP 200",
+      "observed": "HTTP 200 {\"status\":\"ok\",\"database\":true,\"redis\":true}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "providers",
+      "expected": "HTTP 200, email_password=true (vk/yandex informational)",
+      "observed": "HTTP 200 {\"email_password\":true,\"vk\":false,\"yandex\":false}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "register",
+      "expected": "HTTP 201, verification_sent=true, email_verified=false",
+      "observed": "HTTP 201 {\"user\":{\"id\":\"5727790f-9d99-481b-a822-40942445acfe\",\"email\":\"acceptance+20261005t160201z-2795c8@example.com\",\"role\":\"user\",\"status\":\"active\",\"email_verified\":f",
+      "ok": true,
+      "blocked": false,
+      "detail": {
+        "user_id": "5727790f-9d99-481b-a822-40942445acfe",
+        "email_verified": false
+      }
+    },
+    {
+      "area": "verify-email",
+      "expected": "HTTP 200, email_verified=true",
+      "observed": "HTTP 200 (token len=43 sha256=e1621116fbb9)",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "verify-email reuse rejected",
+      "expected": "HTTP 400 token_used",
+      "observed": "HTTP 400 {\"error\":{\"code\":\"token_used\",\"message\":\"Ссылка уже использована.\"}}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "login",
+      "expected": "HTTP 200 + session cookie",
+      "observed": "HTTP 200, cookie=yes",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "me",
+      "expected": "HTTP 200, same email",
+      "observed": "HTTP 200 {\"user\":{\"id\":\"5727790f-9d99-481b-a822-40942445acfe\",\"email\":\"acceptance+20261005t160201z-2795c8@example.com\",\"role\":\"user\",\"status\":\"active\",\"email_verified\":t",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "logout",
+      "expected": "HTTP 204",
+      "observed": "HTTP 204",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "me after logout rejected",
+      "expected": "HTTP 401",
+      "observed": "HTTP 401 {\"error\":{\"code\":\"session_invalid\",\"message\":\"Сессия истекла. Войдите снова.\"}}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "password forgot",
+      "expected": "HTTP 202",
+      "observed": "HTTP 202",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "password reset",
+      "expected": "HTTP 200, sessions_revoked=true",
+      "observed": "HTTP 200 (token len=43 sha256=13215272e630)",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "pre-reset session revoked",
+      "expected": "HTTP 401",
+      "observed": "HTTP 401",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "old password rejected",
+      "expected": "HTTP 401",
+      "observed": "HTTP 401",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "new password accepted",
+      "expected": "HTTP 200",
+      "observed": "HTTP 200",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "admin bootstrap (app.cli create-admin)",
+      "expected": "exit 0, 'admin ready'",
+      "observed": "exit 0: admin ready: acceptance-admin+20261005t160201z-2795c8@example.com",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "admin RBAC witness",
+      "expected": "HTTP 200 {admin: email}",
+      "observed": "HTTP 200 {\"admin\":\"acceptance-admin+20261005t160201z-2795c8@example.com\"}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "non-admin denied",
+      "expected": "HTTP 403 admin_required",
+      "observed": "HTTP 403 {\"error\":{\"code\":\"admin_required\",\"message\":\"Недостаточно прав.\"}}",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "login throttle",
+      "expected": "429 within 11 attempts",
+      "observed": "status codes: [401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 429]",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    }
+  ]
+}
