@@ -228,12 +228,40 @@ async def sync_catalog(
     return report
 
 
-async def list_catalog(db: AsyncSession) -> list[tuple[CatalogModel, CatalogPricing | None]]:
-    models = (
-        await db.execute(select(CatalogModel).order_by(CatalogModel.name))
-    ).scalars().all()
-    active = (
-        await db.execute(select(CatalogPricing).where(CatalogPricing.retired_at.is_(None)))
-    ).scalars().all()
-    by_model = {row.model_id: row for row in active}
-    return [(model, by_model.get(model.id)) for model in models]
+async def list_catalog(
+    db: AsyncSession,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    query: str | None = None,
+    sort: str = "name",
+) -> tuple[list[tuple[CatalogModel, CatalogPricing | None]], int]:
+    """Paginated catalog with search and sorting.
+
+    The full 458-model payload made the endpoint the slowest one in the load
+    smoke (p95 ~6.6s), so pages are small by default and the caller can search
+    and sort server-side.
+    """
+    base = (
+        select(CatalogModel, CatalogPricing)
+        .outerjoin(
+            CatalogPricing,
+            (CatalogPricing.model_id == CatalogModel.id) & (CatalogPricing.retired_at.is_(None)),
+        )
+        .where(CatalogModel.available.is_(True))
+    )
+    if query:
+        needle = f"%{query.strip().lower()}%"
+        base = base.where(
+            func.lower(CatalogModel.name).like(needle) | func.lower(CatalogModel.openrouter_id).like(needle)
+        )
+    if sort == "price":
+        base = base.order_by(CatalogPricing.input_rub_per_mtok.asc().nulls_last(), CatalogModel.name)
+    else:
+        base = base.order_by(CatalogModel.name)
+
+    total = (
+        await db.execute(select(func.count()).select_from(base.order_by(None).subquery()))
+    ).scalar_one()
+    rows = (await db.execute(base.limit(limit).offset(offset))).all()
+    return [(model, pricing) for model, pricing in rows], int(total)
