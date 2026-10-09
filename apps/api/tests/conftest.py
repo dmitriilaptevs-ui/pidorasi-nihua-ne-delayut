@@ -27,6 +27,7 @@ def pytest_configure(config: pytest.Config) -> None:
     os.environ["APP_ENV"] = "test"
     os.environ["PUBLIC_ORIGIN"] = "http://localhost:3001"
     os.environ["MAIL_TRANSPORT"] = "console"
+    os.environ["PROVIDER_KEY_ENCRYPTION_KEY"] = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
     os.environ.setdefault("SESSION_SECRET", "test-only-secret-not-used-by-api")
 
     from alembic import command
@@ -103,7 +104,7 @@ async def clean_database() -> Any:
         async with session_factory()() as db:
             await db.execute(
                 text(
-                    "TRUNCATE TABLE email_tokens, auth_sessions, oauth_handshakes, api_keys, "
+                    "TRUNCATE TABLE email_tokens, auth_sessions, oauth_handshakes, provider_credentials, api_keys, "
                     "catalog_pricing, catalog_models, ledger_postings, ledger_transactions, "
                     "reconciliation_items, reserves, wallets, payments, api_requests, users CASCADE"
                 )

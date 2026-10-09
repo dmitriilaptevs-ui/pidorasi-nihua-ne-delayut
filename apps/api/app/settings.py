@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     # (DECISIONS.md D-05).
     openrouter_api_base: str = "https://openrouter.ai/api/v1"
     openrouter_api_key: str = ""
+    provider_key_encryption_key: str = ""
     fx_rate_rub_per_usd: Decimal = Decimal("100.0")
     price_markup: Decimal = Decimal("1.20")
 

@@ -83,7 +83,7 @@ def validate_chat_request(payload: object) -> dict:
     max_tokens = payload.get("max_tokens")
     if max_tokens is None:
         max_tokens = settings.gateway_default_max_tokens
-    if not isinstance(max_tokens, int) or max_tokens < 1 or max_tokens > settings.gateway_max_output_tokens:
+    if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens < 1 or max_tokens > settings.gateway_max_output_tokens:
         raise GatewayError(
             400,
             f"max_tokens must be an integer between 1 and {settings.gateway_max_output_tokens}.",
@@ -92,7 +92,9 @@ def validate_chat_request(payload: object) -> dict:
     return {"model": model.strip(), "stream": stream, "max_tokens": max_tokens, "raw": payload}
 
 
-async def resolve_model(db: AsyncSession, *, model_id: str) -> tuple[CatalogModel, CatalogPricing]:
+async def resolve_model(
+    db: AsyncSession, *, model_id: str, require_pricing: bool = True
+) -> tuple[CatalogModel, CatalogPricing | None]:
     model = (
         await db.execute(select(CatalogModel).where(CatalogModel.openrouter_id == model_id))
     ).scalar_one_or_none()
@@ -105,7 +107,7 @@ async def resolve_model(db: AsyncSession, *, model_id: str) -> tuple[CatalogMode
             )
         )
     ).scalar_one_or_none()
-    if pricing is None:
+    if pricing is None and require_pricing:
         raise GatewayError(404, f"Model '{model_id}' has no active pricing.", "model_not_priced")
     return model, pricing
 
