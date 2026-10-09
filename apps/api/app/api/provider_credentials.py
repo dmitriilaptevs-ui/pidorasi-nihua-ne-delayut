@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..deps import current_user, get_db, require_origin
+from ..deps import current_user, get_db, read_json_body, require_origin
 from ..errors import ApiError
 from ..models import ProviderCredential, User
 from ..services import provider_credentials as credential_service
@@ -37,10 +37,7 @@ async def put_provider_credential(
 ) -> dict[str, object]:
     if user.email_verified_at is None:
         raise ApiError(403, "email_not_verified", "Подтвердите адрес электронной почты.")
-    try:
-        payload = await request.json()
-    except (ValueError, UnicodeDecodeError):
-        raise ApiError(400, "invalid_credential", "Передайте корректный ключ OpenRouter.") from None
+    payload = await read_json_body(request, max_bytes=8 * 1024)
     api_key = payload.get("api_key") if isinstance(payload, dict) else None
     if not isinstance(api_key, str) or not api_key.strip() or len(api_key) > 1024:
         raise ApiError(400, "invalid_credential", "Передайте корректный ключ OpenRouter.")

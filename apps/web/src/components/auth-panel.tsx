@@ -22,6 +22,13 @@ export function AuthPanel({ mode, token = "" }: { mode: Mode; token?: string }) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [siteSignIn, setSiteSignIn] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ chatgpt?: boolean }>("/api/auth/providers")
+      .then((data) => setSiteSignIn(Boolean(data.chatgpt)))
+      .catch(() => setSiteSignIn(false));
+  }, []);
 
   // Verification/reset links are one-shot: exchange them on load.
   useEffect(() => {
@@ -122,6 +129,12 @@ export function AuthPanel({ mode, token = "" }: { mode: Mode; token?: string }) 
 
         <div className="rb-card rb-card--narrow">
           <h1>{title}</h1>
+
+          {siteSignIn && (mode === "login" || mode === "register") ? (
+            <div className="rb-actions">
+              <a className="rb-btn" href="/api/auth/sites" target="_top">Войти через ChatGPT</a>
+            </div>
+          ) : null}
 
           {error ? <div className="rb-alert rb-alert--error" role="alert">{error}</div> : null}
           {notice ? <div className="rb-alert rb-alert--ok" role="status">{notice}</div> : null}

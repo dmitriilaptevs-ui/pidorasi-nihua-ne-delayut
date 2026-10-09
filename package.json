@@ -1,0 +1,9 @@
+{
+  "name": "rubai",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node infra/scripts/build-site.mjs",
+    "install:ci": "npm --prefix apps/web ci"
+  }
+}

@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import session_factory
-from ..deps import get_db
+from ..deps import get_db, read_json_body
 from ..errors import ApiError
 from ..models import CatalogModel, CatalogPricing, Reserve
 from ..providers.openrouter import (
@@ -76,10 +76,7 @@ def _error_response(exc: ApiError) -> JSONResponse:
 
 
 async def _json_body(request: Request) -> object:
-    try:
-        return await request.json()
-    except (ValueError, UnicodeDecodeError):
-        raise gw.GatewayError(400, "Request body must be valid JSON.") from None
+    return await read_json_body(request, max_bytes=settings.gateway_max_input_chars * 4)
 
 
 @router.get("/models")
@@ -281,7 +278,7 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
                 # A disconnect can still have produced provider cost: account in
                 # a fresh session and reconcile instead of releasing blindly.
                 async with session_factory()() as accounting:
-                    fresh = await accounting.get(Reserve, reserve_id)
+                    fresh = await accounting.get(Reserve, reserve_id) if reserve_id is not None else None
                     charged = 0
                     status = "succeeded" if scanner.usage is not None else "reconciled"
                     if fresh is not None and fresh.status == "held":

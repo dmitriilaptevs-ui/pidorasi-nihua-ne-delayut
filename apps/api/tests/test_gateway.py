@@ -579,3 +579,26 @@ async def test_requests_endpoint_lists_only_the_own_user(client) -> None:
     client.cookies.set("rb_platform_session", raw_b)
     other = await client.get("/api/requests")
     assert other.json()["total"] == 0
+
+async def test_corrupt_customer_credential_does_not_dispatch_or_reserve(client) -> None:
+    account = await setup_account(funding_source='customer')
+    from app.db import session_factory
+    from app.models import ProviderCredential, Reserve
+    from sqlalchemy import select
+    async with session_factory()() as db:
+        credential = await db.get(ProviderCredential, account['user_id'])
+        credential.encrypted_key = b'corrupt'
+        await db.commit()
+    response = await client.post('/v1/chat/completions',json=chat_body(),headers={'authorization':f"Bearer {account['raw_key']}"})
+    assert response.status_code == 503
+    assert BEHAVIOR.calls == []
+    async with session_factory()() as db:
+        assert (await db.execute(select(Reserve))).scalars().all() == []
+
+
+async def test_gateway_bounds_the_entire_body_before_parsing(client) -> None:
+    account = await setup_account()
+    from app.settings import settings
+    response = await client.post('/v1/chat/completions',content=b'x' * (settings.gateway_max_input_chars * 4 + 1),headers={'authorization':f"Bearer {account['raw_key']}"})
+    assert response.status_code == 413
+    assert BEHAVIOR.calls == []

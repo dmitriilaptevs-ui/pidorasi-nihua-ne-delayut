@@ -14,6 +14,7 @@ from typing import Any
 import fakeredis.aioredis
 import httpx
 import pytest
+from app.local_postgres import start_postgres
 
 TOKEN_RE = re.compile(r"token=([A-Za-z0-9_-]{43})")
 
@@ -22,7 +23,7 @@ _BOX: list[dict[str, str]] = []
 
 def pytest_configure(config: pytest.Config) -> None:
     data_dir = tempfile.mkdtemp(prefix="rubai-pg-")
-    server = pgserver_start(data_dir)
+    server = start_postgres(data_dir)
     os.environ["DATABASE_URL"] = server.get_uri().replace("postgresql://", "postgresql+asyncpg://", 1)
     os.environ["APP_ENV"] = "test"
     os.environ["PUBLIC_ORIGIN"] = "http://localhost:3001"
@@ -38,13 +39,6 @@ def pytest_configure(config: pytest.Config) -> None:
     cfg.set_main_option("script_location", os.path.join(here, "..", "alembic"))
     cfg.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
     command.upgrade(cfg, "head")
-
-
-def pgserver_start(data_dir: str):
-    import pgserver
-
-    return pgserver.get_server(data_dir, cleanup_mode=None)
-
 
 class RecordingMailer:
     def __init__(self, box: list[dict[str, str]]) -> None:

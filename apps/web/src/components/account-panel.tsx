@@ -520,7 +520,7 @@ export function AccountPanel() {
               <pre className="rb-agent-code">{`# Задайте эти переменные в ~/.hermes/.env\nOPENAI_API_KEY=ВАШ_КЛЮЧ_ПЛАТФОРМЫ\nOPENAI_BASE_URL=https://ваш-сайт/v1`}</pre>
             </div>
             <div>
-              <p><a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noreferrer">Pi · репозиторий проекта</a></p>
+                <p><a href="https://github.com/earendil-works/pi" target="_blank" rel="noreferrer">Pi · репозиторий проекта</a></p>
               <pre className="rb-agent-code">{`# ~/.pi/agent/models.json\n{\n  "providers": {\n    "rubai": {\n      "baseUrl": "https://ваш-сайт/v1",\n      "api": "openai-completions",\n      "apiKey": "OPENAI_API_KEY",\n      "models": [{ "id": "ID_МОДЕЛИ_ИЗ_КАТАЛОГА" }]\n    }\n  }\n}`}</pre>
             </div>
           </div>

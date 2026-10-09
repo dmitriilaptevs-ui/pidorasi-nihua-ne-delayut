@@ -1,5 +1,6 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
+import { InMemoryCredentialStore } from "@earendil-works/pi-ai";
 import { createAgentSession, createExtensionRuntime, ModelRuntime, SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
 
 const input = JSON.parse(await new Promise((resolve, reject) => {
@@ -28,28 +29,25 @@ class EmptyResourceLoader {
 }
 
 try {
-  await writeFile(path.join(agentDir, "models.json"), JSON.stringify({
-    providers: {
-      rubai: {
-        baseUrl: input.platform_api_base,
-        apiKey: "in-memory-key",
-        api: "openai-completions",
-        headers: input.proxy_token ? { "X-Rubai-Proxy-Token": input.proxy_token } : {},
-        models: [{
-          id: input.model,
-          name: input.model,
-          reasoning: false,
-          input: ["text"],
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-          contextWindow: 65536,
-          maxTokens: 4096,
-        }],
-      },
-    },
-  }));
   const modelRuntime = await ModelRuntime.create({
-    authPath: path.join(agentDir, "auth.json"),
-    modelsPath: path.join(agentDir, "models.json"),
+    credentials: new InMemoryCredentialStore(),
+    modelsPath: null,
+    refreshOnCreate: false,
+  });
+  modelRuntime.registerProvider("rubai", {
+    baseUrl: input.platform_api_base,
+    apiKey: "in-memory-key",
+    api: "openai-completions",
+    headers: input.proxy_token ? { "X-Rubai-Proxy-Token": input.proxy_token } : {},
+    models: [{
+      id: input.model,
+      name: input.model,
+      reasoning: false,
+      input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 65536,
+      maxTokens: 4096,
+    }],
   });
   const model = modelRuntime.getModel("rubai", input.model);
   if (!model) throw new Error("Model unavailable");

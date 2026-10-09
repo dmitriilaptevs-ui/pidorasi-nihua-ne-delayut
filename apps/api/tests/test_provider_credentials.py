@@ -63,5 +63,15 @@ async def test_customer_funding_requires_credential_and_origin_check(verified_cl
 async def test_credential_validation_does_not_echo_input(verified_client, bad_value) -> None:
     response = await verified_client.put("/api/provider-credentials", json={"api_key": bad_value})
     assert response.status_code == 400
-    if isinstance(bad_value, str):
+    if isinstance(bad_value, str) and bad_value:
         assert bad_value not in response.text
+
+async def test_credential_body_is_bounded_before_parsing(verified_client) -> None:
+    response = await verified_client.put('/api/provider-credentials', content=b'x' * 8193)
+    assert response.status_code == 413
+
+    async def chunks():
+        yield b'x' * 4000
+        yield b'x' * 5000
+    response = await verified_client.put('/api/provider-credentials', content=chunks())
+    assert response.status_code == 413

@@ -16,8 +16,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-MAX_BODY_BYTES = 16 * 1024
 MAX_PROMPT_CHARS = 12_000
+MAX_BODY_BYTES = MAX_PROMPT_CHARS * 6 + 4096
 MAX_TEXT_CHARS = 64_000
 MAX_MODEL_CHARS = 200
 MAX_KEY_CHARS = 120
@@ -42,7 +42,7 @@ def _auth_ok(request: Request) -> bool:
     expected = os.getenv("AGENT_RUNTIME_TOKEN", "")
     authorization = request.headers.get("authorization", "")
     supplied = authorization[7:].strip() if authorization.lower().startswith("bearer ") else ""
-    return bool(expected and supplied and hmac.compare_digest(expected, supplied))
+    return bool(expected and supplied and hmac.compare_digest(expected.encode("utf-8"), supplied.encode("utf-8")))
 
 
 def _safe_platform_api_base() -> str | None:

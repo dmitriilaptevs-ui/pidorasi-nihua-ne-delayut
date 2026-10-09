@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import ipaddress
-import json
-import os
 from urllib.parse import urlsplit
 
 import httpx
@@ -12,17 +10,18 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..deps import current_user, get_db, require_origin
+from ..deps import current_user, get_db, read_json_body, require_origin
 from ..errors import ApiError
 from ..models import User
 from ..services import gateway as gateway_service
 from ..services import keys as key_service
 from ..throttle import allow
+from ..settings import settings
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
-MAX_BODY_BYTES = 16 * 1024
 MAX_PROMPT_CHARS = 12_000
+MAX_BODY_BYTES = MAX_PROMPT_CHARS * 6 + 4096
 MAX_MODEL_CHARS = 200
 MAX_API_KEY_CHARS = 120
 RUNTIME_TIMEOUT_SECONDS = 135.0
@@ -53,7 +52,7 @@ class AgentRunRequest(BaseModel):
 
 
 def _runtime_url() -> str | None:
-    value = os.getenv("AGENT_RUNTIME_URL", "").strip().rstrip("/")
+    value = settings.agent_runtime_url.strip().rstrip("/")
     if not value:
         return None
     try:
@@ -72,29 +71,17 @@ def _runtime_url() -> str | None:
 
 
 async def _read_payload(request: Request) -> AgentRunRequest:
-    content_length = request.headers.get("content-length")
-    if content_length:
-        try:
-            if int(content_length) > MAX_BODY_BYTES:
-                raise ApiError(413, "request_too_large", "Request body is too large.")
-        except ValueError:
-            raise ApiError(400, "invalid_request", "Request body is invalid.") from None
-    body = bytearray()
-    async for chunk in request.stream():
-        body.extend(chunk)
-        if len(body) > MAX_BODY_BYTES:
-            raise ApiError(413, "request_too_large", "Request body is too large.")
+    value = await read_json_body(request, max_bytes=MAX_BODY_BYTES)
     try:
-        value = json.loads(body)
         return AgentRunRequest.model_validate(value)
-    except (json.JSONDecodeError, UnicodeDecodeError, ValidationError):
+    except ValidationError:
         raise ApiError(400, "invalid_request", "Provide an engine, API key, model, and prompt.") from None
 
 
 @router.get("")
 async def list_agents(_: User = Depends(current_user)) -> dict[str, list[dict[str, object]]]:
     runtime_url = _runtime_url()
-    token = os.getenv("AGENT_RUNTIME_TOKEN", "")
+    token = settings.agent_runtime_token
     available: dict[str, bool] = {item["id"]: False for item in AGENTS}
     if runtime_url and token:
         try:
@@ -128,7 +115,7 @@ async def run_agent(
         raise ApiError(401, "invalid_api_key", "The platform API key is invalid or unavailable.")
 
     try:
-        await gateway_service.resolve_model(db, model_id=payload.model)
+        await gateway_service.resolve_model(db, model_id=payload.model, require_pricing=resolved[1].funding_source != "customer")
     except gateway_service.GatewayError as exc:
         raise ApiError(exc.status_code, exc.code, exc.message) from None
 
@@ -136,7 +123,7 @@ async def run_agent(
         raise ApiError(429, "rate_limited", "Too many agent runs. Try again shortly.")
 
     runtime_url = _runtime_url()
-    token = os.getenv("AGENT_RUNTIME_TOKEN", "")
+    token = settings.agent_runtime_token
     if not runtime_url or not token:
         raise ApiError(503, "agent_runtime_unavailable", "Agent runtime is not configured.")
 
@@ -170,4 +157,4 @@ async def run_agent(
     text = result.get("text") if isinstance(result, dict) else None
     if not isinstance(text, str) or len(text) > 64_000:
         raise ApiError(502, "agent_failed", "The agent returned an invalid response.")
-    return {"text": text}
+    return {"engine": payload.engine, "text": text}

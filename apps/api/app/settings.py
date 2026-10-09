@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     service_name: str = "rubai-api"
     database_url: str = "postgresql+asyncpg://rubai:rubai@127.0.0.1:5432/rubai"
     redis_url: str = "redis://127.0.0.1:6379/0"
+    api_proxy_token: str = ""
+    agent_runtime_url: str = ""
+    agent_runtime_token: str = ""
 
     # Public web origin: cookie scope, links inside emails, Origin checks.
     public_origin: str = "http://localhost:3001"

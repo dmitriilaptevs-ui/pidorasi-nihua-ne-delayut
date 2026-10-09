@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from ..errors import ApiError
 from ..models import AuthSession, EmailToken, User
@@ -43,6 +44,35 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
 
 async def get_user(db: AsyncSession, user_id) -> User | None:
     return await db.get(User, user_id)
+
+
+async def get_or_create_site_user(db: AsyncSession, *, subject: str, email: str | None) -> User:
+    """Use the Site's asserted identity; never link an existing account by email."""
+    query = select(User).where(User.oauth_provider == "chatgpt", User.oauth_subject == token_digest(subject))
+    user = (await db.execute(query)).scalar_one_or_none()
+    if user is None:
+        normalized = normalize_email(email) if email else None
+        if normalized and await get_user_by_email(db, normalized) is not None:
+            normalized = None
+        user = User(
+            email=normalized,
+            display_name=(email or "ChatGPT")[:80],
+            signup_method="chatgpt",
+            oauth_provider="chatgpt",
+            oauth_subject=token_digest(subject),
+            email_verified_at=utcnow(),
+        )
+        try:
+            async with db.begin_nested():
+                db.add(user)
+                await db.flush()
+        except IntegrityError:
+            user = (await db.execute(query)).scalar_one_or_none()
+            if user is None:
+                raise ApiError(409, "identity_conflict", "Войдите ещё раз.") from None
+    if user.status != "active":
+        raise ApiError(403, "account_disabled", "Аккаунт недоступен.")
+    return user
 
 
 async def register(db: AsyncSession, *, email: str, password: str, method: str = "password") -> tuple[User, str]:
