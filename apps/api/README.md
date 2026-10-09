@@ -23,3 +23,7 @@ python -m pytest -q
 
 No secrets belong in this directory. Deployment injects `DATABASE_URL` and
 `REDIS_URL` from the environment; see [infra/README.md](../../infra/README.md).
+Set `PROVIDER_KEY_ENCRYPTION_KEY` to a 32-byte key encoded with URL-safe
+Base64 before accepting customer OpenRouter credentials. Each user's provider
+key is encrypted with AES-GCM and bound to that user's id; platform provider
+keys continue to use `OPENROUTER_API_KEY`.

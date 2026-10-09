@@ -23,7 +23,8 @@ async def create_key(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, object]:
     key, raw = await key_service.create_key(
-        db, user=user, name=payload.name, monthly_limit_kopecks=payload.monthly_limit_kopecks
+        db, user=user, name=payload.name, monthly_limit_kopecks=payload.monthly_limit_kopecks,
+        funding_source=payload.funding_source,
     )
     await db.commit()
     # The raw key is returned exactly once and never stored or logged.

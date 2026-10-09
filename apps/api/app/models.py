@@ -17,6 +17,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -115,9 +116,25 @@ class ApiKey(Base):
     prefix: Mapped[str] = mapped_column(String(24))
     key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     monthly_limit_kopecks: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    funding_source: Mapped[str] = mapped_column(String(16), default="platform", server_default="platform")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ProviderCredential(Base):
+    """Authenticated encryption of a user's OpenRouter credential."""
+
+    __tablename__ = "provider_credentials"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    encrypted_key: Mapped[bytes] = mapped_column(LargeBinary)
+    suffix: Mapped[str] = mapped_column(String(8))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class CatalogModel(Base):

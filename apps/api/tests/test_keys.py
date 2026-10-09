@@ -17,6 +17,7 @@ async def test_create_key_returns_raw_once_and_stores_only_digest(verified_clien
     assert raw.startswith("sk-rubai-")
     assert body["item"]["prefix"] == raw[:16]
     assert body["item"]["monthly_limit_kopecks"] == 300000
+    assert body["item"]["funding_source"] == "platform"
 
     from app.db import session_factory
     from app.models import ApiKey

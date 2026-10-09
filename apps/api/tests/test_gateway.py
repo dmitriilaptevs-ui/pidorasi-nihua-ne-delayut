@@ -72,7 +72,8 @@ def mock_upstream(monkeypatch: pytest.MonkeyPatch) -> Behavior:
     return BEHAVIOR
 
 
-async def setup_account(*, balance_kopecks: int = 10_000, monthly_limit: int | None = None):
+async def setup_account(*, balance_kopecks: int = 10_000, monthly_limit: int | None = None,
+                        funding_source: str = "platform"):
     """Verified user + wallet + API key + one priced catalog model."""
     from app.db import session_factory
     from app.models import CatalogModel, CatalogPricing
@@ -94,8 +95,15 @@ async def setup_account(*, balance_kopecks: int = 10_000, monthly_limit: int | N
                 amount_kopecks=balance_kopecks,
                 reference=f"gw-topup-{uuid.uuid4().hex}",
             )
+        if funding_source == "customer":
+            from app.services import provider_credentials as credential_service
+
+            await credential_service.save_credential(
+                db, user_id=user.id, api_key="customer-provider-secret"
+            )
         key, raw = await key_service.create_key(
-            db, user=user, name="gateway-test", monthly_limit_kopecks=monthly_limit
+            db, user=user, name="gateway-test", monthly_limit_kopecks=monthly_limit,
+            funding_source=funding_source,
         )
         model = (
             await db.execute(select(CatalogModel).where(CatalogModel.openrouter_id == "acme/chat-1"))
@@ -320,9 +328,23 @@ async def test_upstream_http_error_releases_reserve(client) -> None:
         headers={"authorization": f"Bearer {account['raw_key']}"},
     )
     assert response.status_code == 500
+    assert "upstream failed" not in response.text
+    assert response.json()["error"]["code"] == "upstream_error"
     reserves = await reserve_rows()
     assert reserves[0].status == "released"
     assert await wallet_balance(account["wallet_id"]) == 10_000
+
+
+async def test_stream_upstream_error_hides_provider_body(client) -> None:
+    account = await setup_account()
+    BEHAVIOR.status = 401
+    response = await client.post(
+        "/v1/chat/completions", json=chat_body(stream=True),
+        headers={"authorization": f"Bearer {account['raw_key']}"},
+    )
+    assert response.status_code == 401
+    assert "upstream failed" not in response.text
+    assert response.json()["error"]["code"] == "upstream_error"
 
 
 async def test_upstream_not_configured_releases_reserve(client, monkeypatch) -> None:
@@ -440,6 +462,55 @@ async def test_successful_call_records_request_history(client) -> None:
     assert row.provider == "acme"
     assert row.price_version == 1
     assert row.provider_request_id == "gen-1"
+
+
+@pytest.mark.parametrize("stream", [False, True])
+async def test_customer_key_uses_user_provider_key_without_platform_charge(client, stream: bool) -> None:
+    account = await setup_account(balance_kopecks=0, funding_source="customer")
+    if stream:
+        BEHAVIOR.kind = "stream"
+    response = await client.post(
+        "/v1/chat/completions", json=chat_body(stream=stream),
+        headers={"authorization": f"Bearer {account['raw_key']}"},
+    )
+    assert response.status_code == 200
+    assert BEHAVIOR.calls[0]["headers"]["authorization"] == "Bearer customer-provider-secret"
+    assert await wallet_balance(account["wallet_id"]) == 0
+    assert await reserve_rows() == []
+    rows = await _request_rows()
+    assert len(rows) == 1
+    assert rows[0].cost_kopecks == 0
+    assert rows[0].price_version is None
+
+
+async def test_boolean_max_tokens_is_rejected(client) -> None:
+    account = await setup_account()
+    response = await client.post(
+        "/v1/chat/completions", json=chat_body(max_tokens=True),
+        headers={"authorization": f"Bearer {account['raw_key']}"},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_max_tokens"
+    assert BEHAVIOR.calls == []
+
+
+async def test_customer_key_never_falls_back_after_credential_deletion(client) -> None:
+    account = await setup_account(funding_source="customer")
+    from app.db import session_factory
+    from app.models import ProviderCredential
+
+    async with session_factory()() as db:
+        credential = await db.get(ProviderCredential, account["user_id"])
+        await db.delete(credential)
+        await db.commit()
+
+    response = await client.post(
+        "/v1/chat/completions", json=chat_body(),
+        headers={"authorization": f"Bearer {account['raw_key']}"},
+    )
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "provider_credential_missing"
+    assert BEHAVIOR.calls == []
 
 
 async def test_upstream_error_records_history_without_cost(client) -> None:
