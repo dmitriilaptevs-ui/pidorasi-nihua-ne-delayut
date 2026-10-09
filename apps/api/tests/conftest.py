@@ -18,13 +18,15 @@ from app.local_postgres import start_postgres
 
 TOKEN_RE = re.compile(r"token=([A-Za-z0-9_-]{43})")
 
-_BOX: list[dict[str, str]] = []
+_POSTGRES_SERVER: Any | None = None
 
 
 def pytest_configure(config: pytest.Config) -> None:
+    global _POSTGRES_SERVER
+
     data_dir = tempfile.mkdtemp(prefix="rubai-pg-")
-    server = start_postgres(data_dir)
-    os.environ["DATABASE_URL"] = server.get_uri().replace("postgresql://", "postgresql+asyncpg://", 1)
+    _POSTGRES_SERVER = start_postgres(data_dir)
+    os.environ["DATABASE_URL"] = _POSTGRES_SERVER.get_uri().replace("postgresql://", "postgresql+asyncpg://", 1)
     os.environ["APP_ENV"] = "test"
     os.environ["PUBLIC_ORIGIN"] = "http://localhost:3001"
     os.environ["MAIL_TRANSPORT"] = "console"
@@ -39,6 +41,16 @@ def pytest_configure(config: pytest.Config) -> None:
     cfg.set_main_option("script_location", os.path.join(here, "..", "alembic"))
     cfg.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
     command.upgrade(cfg, "head")
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if _POSTGRES_SERVER is None or _POSTGRES_SERVER.get_pid() is None:
+        return
+
+    import pgserver._commands as commands
+
+    commands.pg_ctl(["-w", "stop"], pgdata=_POSTGRES_SERVER.pgdata)
+
 
 class RecordingMailer:
     def __init__(self, box: list[dict[str, str]]) -> None:
