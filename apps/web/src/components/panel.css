@@ -315,6 +315,17 @@
   margin: 10px 0;
 }
 
+.rb-agent-result,
+.rb-agent-code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 2px solid #16140f;
+  background: #f1e8d3;
+  padding: 14px;
+  margin: 12px 0;
+  font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 .rb-models {
   display: grid;
   gap: 16px;
