@@ -54,6 +54,7 @@ class RefundRequest(BaseModel):
 class KeyCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     monthly_limit_kopecks: int | None = Field(default=None, ge=0)
+    funding_source: Literal["platform", "customer"] = "platform"
 
 
 class KeyView(BaseModel):
@@ -64,6 +65,7 @@ class KeyView(BaseModel):
     revoked_at: datetime | None
     last_used_at: datetime | None
     monthly_limit_kopecks: int | None
+    funding_source: Literal["platform", "customer"]
 
     @classmethod
     def of(cls, key: object) -> "KeyView":
@@ -75,6 +77,7 @@ class KeyView(BaseModel):
             revoked_at=key.revoked_at,  # type: ignore[attr-defined]
             last_used_at=key.last_used_at,  # type: ignore[attr-defined]
             monthly_limit_kopecks=key.monthly_limit_kopecks,  # type: ignore[attr-defined]
+            funding_source=key.funding_source,  # type: ignore[attr-defined]
         )
 
 

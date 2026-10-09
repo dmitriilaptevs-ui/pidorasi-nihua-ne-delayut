@@ -197,3 +197,35 @@ async def test_admin_rbac(client, mailbox) -> None:
 async def test_me_requires_session(client) -> None:
     response = await client.get("/api/auth/me")
     assert response.status_code == 401
+
+async def test_site_sign_in_requires_trusted_proxy_and_identity(client, monkeypatch) -> None:
+    from app.settings import settings
+    from app.deps import API_PROXY_HEADER
+    monkeypatch.setattr(settings, 'api_proxy_token', 'test-site-proxy')
+    missing = await client.get('/api/auth/sites', headers={'x-rubai-sites-user-id':'visitor-a'})
+    assert missing.status_code == 403
+    missing_identity = await client.get('/api/auth/sites', headers={API_PROXY_HEADER:'test-site-proxy'})
+    assert missing_identity.status_code == 401
+    headers = {API_PROXY_HEADER:'test-site-proxy', 'x-rubai-sites-user-id':'visitor-a', 'x-rubai-sites-user-email':'visitor@example.com'}
+    signed_in = await client.get('/api/auth/sites', headers=headers)
+    assert signed_in.status_code == 303
+    assert signed_in.headers['location'] == '/account'
+    assert 'httponly' in signed_in.headers['set-cookie'].lower()
+    me = await client.get('/api/auth/me', headers={API_PROXY_HEADER:'test-site-proxy'})
+    assert me.status_code == 200
+    first_id = me.json()['user']['id']
+    assert me.json()['user']['email_verified'] is True
+    await client.get('/api/auth/sites', headers=headers)
+    assert (await client.get('/api/auth/me', headers={API_PROXY_HEADER:'test-site-proxy'})).json()['user']['id'] == first_id
+
+
+async def test_site_identity_does_not_link_account_by_email(verified_client, monkeypatch) -> None:
+    from app.settings import settings
+    from app.deps import API_PROXY_HEADER
+    original = (await verified_client.get('/api/auth/me')).json()['user']['id']
+    monkeypatch.setattr(settings, 'api_proxy_token', 'test-site-proxy')
+    response = await verified_client.get('/api/auth/sites', headers={API_PROXY_HEADER:'test-site-proxy','x-rubai-sites-user-id':'different-visitor','x-rubai-sites-user-email':'verified@example.com'})
+    assert response.status_code == 303
+    user = (await verified_client.get('/api/auth/me',headers={API_PROXY_HEADER:'test-site-proxy'})).json()['user']
+    assert user['id'] != original
+    assert user['email'] is None

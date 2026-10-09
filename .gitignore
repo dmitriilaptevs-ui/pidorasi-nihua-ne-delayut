@@ -50,3 +50,10 @@ Thumbs.db
 
 # Playwright session state (contains cookies)
 apps/web/e2e/.auth/
+
+# Sites build outputs and checkout-local tooling
+apps/web/dist/
+.sites-runtime/
+apps/web/.sites-runtime/
+apps/web/.wrangler/
+apps/web/.vinext/

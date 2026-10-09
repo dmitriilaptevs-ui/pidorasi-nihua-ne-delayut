@@ -18,7 +18,7 @@ async function openAccount(page: Page) {
 
 test("landing renders the catalog and links to registration", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Доступ к зарубежным AI-моделям/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Доступ к моделям OpenRouter и веб-агентам/ })).toBeVisible();
   await expect(page.locator("#models .rb-model").first()).toBeVisible({ timeout: 20_000 });
   await expect(page.locator("#models .rb-model").first().locator(".rb-model__price")).toContainText("₽");
   await page.getByRole("link", { name: "Создать аккаунт" }).first().click();
@@ -69,6 +69,12 @@ test("balance, keys and catalog are visible to the signed-in user", async ({ pag
   await openAccount(page);
   await expect(page.locator(".rb-stat").first().locator(".rb-stat__value")).toContainText("₽");
   await expect(page.getByRole("heading", { name: "API-ключи" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ключ OpenRouter" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Веб-агенты" })).toBeVisible();
+  await expect(page.getByLabel("Источник оплаты")).toContainText("Баланс платформы");
+  await expect(page.getByLabel("Источник оплаты")).toContainText("Мой ключ OpenRouter");
+  await expect(page.getByRole("link", { name: /Hermes Agent · официальный репозиторий/ })).toHaveAttribute("href", "https://github.com/NousResearch/hermes-agent");
+  await expect(page.getByRole("link", { name: /Pi · репозиторий проекта/ })).toHaveAttribute("href", "https://github.com/badlogic/pi-mono");
   await expect(page.getByRole("heading", { name: "Каталог моделей" })).toBeVisible();
   await page.getByLabel("Поиск").fill("gemini");
   await expect(page.locator(".rb-table tbody tr").first()).toBeVisible({ timeout: 15_000 });

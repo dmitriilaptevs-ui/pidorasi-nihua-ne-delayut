@@ -10,10 +10,11 @@ const config: NextConfig = {
   reactStrictMode: true,
   devIndicators: false,
   // Emit a self-contained server for the Docker image (see Dockerfile).
-  output: "standalone",
+  output: process.env.SITES_BUILD === "1" ? undefined : "standalone",
   // OAuth callbacks carry one-time codes: never write incoming URLs to dev logs.
   logging: false,
   async rewrites() {
+    if (process.env.SITES_BUILD === "1") return [];
     // afterFiles: the lab BFF routes still in apps/web win; everything else
     // under /api and /v1 goes to the platform API on the same origin, so
     // cookies and CSRF origin checks stay first-party.

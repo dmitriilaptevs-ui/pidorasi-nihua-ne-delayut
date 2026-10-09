@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..errors import ApiError
-from ..models import ApiKey, User
+from ..models import ApiKey, ProviderCredential, User
 from ..security import token_digest
 from . import identity as identity_service
 
@@ -34,6 +34,7 @@ async def create_key(
     user: User,
     name: str,
     monthly_limit_kopecks: int | None = None,
+    funding_source: str = "platform",
 ) -> tuple[ApiKey, str]:
     if user.email_verified_at is None:
         raise ApiError(403, "email_not_verified", "Подтвердите адрес электронной почты, чтобы создавать ключи.")
@@ -42,6 +43,10 @@ async def create_key(
         raise ApiError(400, "invalid_name", f"Имя ключа: от 1 до {MAX_NAME_LENGTH} символов.")
     if monthly_limit_kopecks is not None and monthly_limit_kopecks < 0:
         raise ApiError(400, "invalid_limit", "Лимит не может быть отрицательным.")
+    if funding_source == "customer":
+        credential = await db.get(ProviderCredential, user.id)
+        if credential is None:
+            raise ApiError(400, "provider_credential_required", "Добавьте ключ OpenRouter перед созданием клиентского ключа.")
 
     raw = new_raw_key()
     key = ApiKey(
@@ -50,6 +55,7 @@ async def create_key(
         prefix=raw[:PREFIX_DISPLAY_LENGTH],
         key_hash=token_digest(raw),
         monthly_limit_kopecks=monthly_limit_kopecks,
+        funding_source=funding_source,
     )
     db.add(key)
     await db.flush()

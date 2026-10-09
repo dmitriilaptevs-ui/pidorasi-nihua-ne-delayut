@@ -7,7 +7,6 @@ reconciliation item instead.
 
 from __future__ import annotations
 
-import json
 import uuid
 from decimal import Decimal
 
@@ -17,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import session_factory
-from ..deps import get_db
+from ..deps import get_db, read_json_body
 from ..errors import ApiError
 from ..models import CatalogModel, CatalogPricing, Reserve
 from ..providers.openrouter import (
@@ -29,6 +28,7 @@ from ..providers.openrouter import (
 )
 from ..services import gateway as gw
 from ..services import ledger as ledger_service
+from ..services import provider_credentials as credential_service
 from ..settings import settings
 
 router = APIRouter(prefix="/v1", tags=["gateway"])
@@ -76,10 +76,7 @@ def _error_response(exc: ApiError) -> JSONResponse:
 
 
 async def _json_body(request: Request) -> object:
-    try:
-        return await request.json()
-    except (ValueError, UnicodeDecodeError):
-        raise gw.GatewayError(400, "Request body must be valid JSON.") from None
+    return await read_json_body(request, max_bytes=settings.gateway_max_input_chars * 4)
 
 
 @router.get("/models")
@@ -121,13 +118,25 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
     try:
         user, api_key = await gw.authenticate(db, authorization=request.headers.get("authorization"))
         validated = gw.validate_chat_request(await _json_body(request))
-        model, pricing = await gw.resolve_model(db, model_id=validated["model"])
-        snapshot = gw.snapshot_of(pricing)
-        reserve_kopecks = gw.estimate_reserve_kopecks(
-            snapshot, messages=validated["raw"]["messages"], max_tokens=validated["max_tokens"]
+        customer_funded = api_key.funding_source == "customer"
+        model, pricing = await gw.resolve_model(
+            db, model_id=validated["model"], require_pricing=not customer_funded
         )
-        wallet = await ledger_service.get_or_create_wallet(db, user_id=user.id)
-        await gw.check_monthly_limit(db, api_key=api_key, wallet=wallet, estimated_kopecks=reserve_kopecks)
+        provider_key = None
+        if customer_funded:
+            credential = await credential_service.get_credential(db, user_id=user.id)
+            if credential is None:
+                raise gw.GatewayError(503, "Customer provider key is not configured.", "provider_credential_missing", "server_error")
+            provider_key = credential_service.decrypt_key(credential)
+            snapshot = None
+            reserve_kopecks = 0
+        else:
+            snapshot = gw.snapshot_of(pricing)
+            reserve_kopecks = gw.estimate_reserve_kopecks(
+                snapshot, messages=validated["raw"]["messages"], max_tokens=validated["max_tokens"]
+            )
+            wallet = await ledger_service.get_or_create_wallet(db, user_id=user.id)
+            await gw.check_monthly_limit(db, api_key=api_key, wallet=wallet, estimated_kopecks=reserve_kopecks)
 
         request_ref = uuid.uuid4().hex
         reserve: Reserve | None = None
@@ -156,7 +165,7 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
 
     upstream = upstream_payload(validated["raw"], stream=validated["stream"])
     upstream["max_tokens"] = validated["max_tokens"]
-    adapter = OpenRouterAdapter()
+    adapter = OpenRouterAdapter(api_key=provider_key) if customer_funded else OpenRouterAdapter()
 
     if not validated["stream"]:
         try:
@@ -187,7 +196,7 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
             if reserve is not None:
                 await ledger_service.release(db, reserve=reserve, reason="upstream_error")
             await _record_failure(db, user=user, api_key=api_key, request_ref=request_ref, model=model, status="upstream_error")
-            return JSONResponse(status_code=status, content=data)
+            return JSONResponse(status_code=status, content={"error": {"message": "Upstream provider rejected the request.", "type": "server_error", "code": "upstream_error"}})
 
         usage = data.get("usage") if isinstance(data, dict) and isinstance(data.get("usage"), dict) else None
         charged = 0
@@ -214,7 +223,7 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
             status=status,
             usage=usage,
             cost_kopecks=charged,
-            pricing=pricing,
+            pricing=pricing if not customer_funded else None,
             provider_request_id=str(data.get("id") or "") if isinstance(data, dict) else None,
         )
         await db.commit()
@@ -246,17 +255,13 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
         return JSONResponse(status_code=502, content=UPSTREAM_AMBIGUOUS)
 
     if response.status_code >= 400:
-        raw = await response.aread()
+        await response.aread()
         await response.aclose()
         await client.aclose()
         if reserve is not None:
             await ledger_service.release(db, reserve=reserve, reason="upstream_error")
         await _record_failure(db, user=user, api_key=api_key, request_ref=request_ref, model=model, status="upstream_error")
-        try:
-            content = json.loads(raw)
-        except ValueError:
-            content = {"error": {"message": "Upstream error.", "type": "server_error", "code": "upstream_error"}}
-        return JSONResponse(status_code=response.status_code, content=content)
+        return JSONResponse(status_code=response.status_code, content={"error": {"message": "Upstream provider rejected the request.", "type": "server_error", "code": "upstream_error"}})
 
     reserve_id = reserve.id if reserve is not None else None
 
@@ -269,18 +274,18 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
         finally:
             await response.aclose()
             await client.aclose()
-            if reserve_id is not None:
+            if reserve_id is not None or customer_funded:
                 # A disconnect can still have produced provider cost: account in
                 # a fresh session and reconcile instead of releasing blindly.
                 async with session_factory()() as accounting:
-                    fresh = await accounting.get(Reserve, reserve_id)
+                    fresh = await accounting.get(Reserve, reserve_id) if reserve_id is not None else None
                     charged = 0
                     status = "succeeded" if scanner.usage is not None else "reconciled"
                     if fresh is not None and fresh.status == "held":
-                        if scanner.usage is not None:
+                        if scanner.usage is not None and snapshot is not None:
                             cost = gw.compute_cost_rub(snapshot, scanner.usage)
                             _, charged = await ledger_service.settle(accounting, reserve=fresh, cost_rub=cost)
-                        else:
+                        elif scanner.usage is None:
                             await ledger_service.flag_reconciliation(
                                 accounting,
                                 request_ref=request_ref,
@@ -298,7 +303,7 @@ async def chat_completions(request: Request, db: AsyncSession = Depends(get_db))
                         status=status,
                         usage=scanner.usage,
                         cost_kopecks=charged,
-                        pricing=pricing,
+                        pricing=pricing if not customer_funded else None,
                     )
                     await accounting.commit()
 

@@ -9,8 +9,8 @@ import "@fontsource/unbounded/700.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "rubai — доступ к AI-моделям за рубли",
-  description: "Регистрация, ключи платформы и OpenAI-совместимый API к зарубежным AI-моделям с оплатой в рублях.",
+  title: "rubai — API к моделям OpenRouter и веб-агенты",
+  description: "OpenAI-совместимый API с оплатой с баланса платформы или собственным ключом OpenRouter. Веб-агенты Hermes и Pi.",
   robots: { index: false, follow: false },
 };
 
