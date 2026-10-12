@@ -126,3 +126,37 @@ publishes `-120000000.000000` RUB/Mtok (input and output) for them. The pack
 fails until the provider sentinel is rejected (or mapped to no pricing /
 unavailable); the gateway must not be able to turn this into a negative
 charge.
+
+## ledger_concurrency_live.py
+
+100 concurrent `/v1/chat/completions` requests on one wallet/key, with
+read-only DB witnesses and an in-container poller sampling every 2 ms:
+
+| Step | Assertion |
+| --- | --- |
+| 5-kopeck wallet | every response is a platform 402 `insufficient_funds` (no reserve) or a funded request (exactly one reserve, released/settled exactly once); balance 5 and reserved 0 afterwards |
+| overspend witness | the poller observes the maximum concurrently *held* reserve and `reserved_kopecks`; both must stay within the wallet balance (observed max: exactly 5 held on a 5-kopeck wallet under 100 concurrent requests) |
+| funded wallet | 100 funded requests, 100 reserves, each released/settled exactly once; balance and reserved projections consistent; peak held observed |
+| global invariants | no negative reserved projection; every wallet balance equals the sum of its postings; reserve references unique; no open reconciliation items from clean failures |
+| provider state probe | records the live upstream result; an absent or rejected provider key is reported as BLOCKED, not as a concurrency failure |
+| settle/double-charge | blocked while the provider key is rejected/absent (needs a successful upstream call) |
+
+```bash
+apps/api/.venv/bin/python scripts/acceptance/ledger_concurrency_live.py
+```
+
+The pack is mode-agnostic: upstream 200 responses count as settled, upstream
+errors (including credential errors) count as released, and both are checked
+against the exact-once lifecycle and balance math.
+
+### Finding 2026-10-05 18:07Z: provider key expired
+
+The live probe returns upstream `HTTP 401 {"error":{"message":"API key expired.",
+"code":401,"metadata":{"headers":{"WWW-Authenticate":"Bearer
+invalid_token, error_description=\"API key expired\""}}}}`. Consequence: no
+free/paid live model call can succeed, so the settle leg and the product
+journey (criterion 3) stay blocked until the owner supplies a fresh OpenRouter
+key. Reserve behavior on upstream errors is correct: every reserve released,
+wallet balance unchanged, peak held never above the balance.
+
+Result on the gateway image 2026-10-05 18:07Z: **7/9 passed, 2 blocked**.

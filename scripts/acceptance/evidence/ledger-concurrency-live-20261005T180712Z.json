@@ -1,0 +1,967 @@
+{
+  "pack": "identity-live",
+  "started_at": "2026-10-05T18:05:55.855910+00:00",
+  "finished_at": "2026-10-05T18:07:12.430412+00:00",
+  "summary": {
+    "total": 9,
+    "passed": 7,
+    "failed": 2,
+    "blocked": 2
+  },
+  "notes": [
+    "base_url=http://127.0.0.1:8080",
+    "api_container=rubai-api-1",
+    "api_image=sha256:313d7adea1c97d7788b768f5778ca4bf7ce02cd498018bd799f9cce9cb76929b 2026-10-05T18:03:56.037484036Z",
+    "concurrency=100 tiny_balance_kopecks=5"
+  ],
+  "steps": [
+    {
+      "area": "admin session",
+      "expected": "login as admin",
+      "observed": "established",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "1-kopeck model chosen",
+      "expected": "an available model whose request estimate is exactly 1 kopeck",
+      "observed": "aion-labs/aion-2.0 reserve=1",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "tiny balance account ready",
+      "expected": "5 kopecks + platform key",
+      "observed": "ready",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "provider upstream state",
+      "expected": "200 from a funded live call so the settle leg is exercised",
+      "observed": "HTTP 401 {\"error\":{\"message\":\"API key expired.\",\"code\":401,\"metadata\":{\"headers\":{\"WWW-Authenticate\":\"Bearer error=\\\"invalid_token\\\", error_description=\\\"API key expired\\\"\"}}}}",
+      "ok": false,
+      "blocked": true,
+      "detail": {
+        "upstream_body": "{\"error\":{\"message\":\"API key expired.\",\"code\":401,\"metadata\":{\"headers\":{\"WWW-Authenticate\":\"Bearer error=\\\"invalid_token\\\", error_description=\\\"API key expired\\\"\"}}}}"
+      }
+    },
+    {
+      "area": "100 concurrent requests on a 5-kopeck wallet",
+      "expected": "every request is a platform 402 (no reserve) or funded (one reserve, released/settled exactly once); balance consistent; max held <= 5",
+      "observed": "{\"histogram\": {\"401:401\": 11, \"402:insufficient_funds\": 89}, \"exceptions\": 0, \"insufficient\": 89, \"successes\": 0, \"funded\": 11, \"reserves\": 11, \"released\": 11, \"settled\": 0, \"settled_kopecks\": 0, \"start_balance\": 5, \"end_balance\": 5, \"end_reserved\": 0, \"max_held_seen\": 5, \"max_reserved_seen\": 5, \"poller_samples\": 2737, \"checks\": {\"no_exceptions\": true, \"reserves_match_funded\": true, \"lifecycle_complete\": true, \"settled_matches_successes\": true, \"reserved_zero\": true, \"balance_consistent\": true, \"held_within_balance\": true, \"poller_sampled\": true}}",
+      "ok": true,
+      "blocked": false,
+      "detail": {
+        "metrics": {
+          "histogram": {
+            "401:401": 11,
+            "402:insufficient_funds": 89
+          },
+          "exceptions": 0,
+          "insufficient": 89,
+          "successes": 0,
+          "funded": 11,
+          "reserves": 11,
+          "released": 11,
+          "settled": 0,
+          "settled_kopecks": 0,
+          "start_balance": 5,
+          "end_balance": 5,
+          "end_reserved": 0,
+          "max_held_seen": 5,
+          "max_reserved_seen": 5,
+          "poller_samples": 2737,
+          "checks": {
+            "no_exceptions": true,
+            "reserves_match_funded": true,
+            "lifecycle_complete": true,
+            "settled_matches_successes": true,
+            "reserved_zero": true,
+            "balance_consistent": true,
+            "held_within_balance": true,
+            "poller_sampled": true
+          }
+        },
+        "witness": {
+          "reserves": [
+            {
+              "request_ref": "12f60dd7bd0b4ca0bcd41907622fd525",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:21.271665+00:00"
+            },
+            {
+              "request_ref": "0981692bcc6841b8ab51bced694e03d3",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:22.854814+00:00"
+            },
+            {
+              "request_ref": "9b69ea377a394398b73ce5a4654e5a88",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:22.821577+00:00"
+            },
+            {
+              "request_ref": "187e67b4df044fb383f8ab0492cebb56",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:23.000939+00:00"
+            },
+            {
+              "request_ref": "7baaaf5bec284227a3c17f585917fcc3",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:21.553577+00:00"
+            },
+            {
+              "request_ref": "3d218cbd267a45debee7db1bf9b7e342",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:22.093052+00:00"
+            },
+            {
+              "request_ref": "b6fa182d44ac4b808255185771b6b09c",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:22.506772+00:00"
+            },
+            {
+              "request_ref": "8999beb8f988419fac24ecb0eb5b5121",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:22.912395+00:00"
+            },
+            {
+              "request_ref": "fa083b1321f441a1b671c2405e8951d6",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:23.315625+00:00"
+            },
+            {
+              "request_ref": "625f722bdbba4e1b840b937cd6fe54ec",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:23.444047+00:00"
+            },
+            {
+              "request_ref": "46513a2cfe1040a4ad5c3242a7cecf81",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:23.519068+00:00"
+            }
+          ],
+          "open_items": 0,
+          "duplicate_references": 0,
+          "wallet": {
+            "id": "08d41b40-7c00-4f00-a7f3-3257f6773cb9",
+            "balance_kopecks": 5,
+            "reserved_kopecks": 0
+          },
+          "postings_sum": "5",
+          "global": {}
+        },
+        "poller": {
+          "samples": 2737,
+          "max_reserved": 5,
+          "max_held_sum": 5
+        }
+      }
+    },
+    {
+      "area": "100 concurrent requests on a funded wallet",
+      "expected": "every request funded with exactly one reserve, released/settled exactly once; balance and reserved consistent with the provider result",
+      "observed": "{\"histogram\": {\"401:401\": 100}, \"exceptions\": 0, \"insufficient\": 0, \"successes\": 0, \"funded\": 100, \"reserves\": 100, \"released\": 100, \"settled\": 0, \"settled_kopecks\": 0, \"start_balance\": 4000, \"end_balance\": 4000, \"end_reserved\": 0, \"max_held_seen\": 95, \"max_reserved_seen\": 95, \"poller_samples\": 2245, \"checks\": {\"no_exceptions\": true, \"reserves_match_funded\": true, \"lifecycle_complete\": true, \"settled_matches_successes\": true, \"reserved_zero\": true, \"balance_consistent\": true, \"held_within_balance\": true, \"poller_sampled\": true}}",
+      "ok": true,
+      "blocked": false,
+      "detail": {
+        "metrics": {
+          "histogram": {
+            "401:401": 100
+          },
+          "exceptions": 0,
+          "insufficient": 0,
+          "successes": 0,
+          "funded": 100,
+          "reserves": 100,
+          "released": 100,
+          "settled": 0,
+          "settled_kopecks": 0,
+          "start_balance": 4000,
+          "end_balance": 4000,
+          "end_reserved": 0,
+          "max_held_seen": 95,
+          "max_reserved_seen": 95,
+          "poller_samples": 2245,
+          "checks": {
+            "no_exceptions": true,
+            "reserves_match_funded": true,
+            "lifecycle_complete": true,
+            "settled_matches_successes": true,
+            "reserved_zero": true,
+            "balance_consistent": true,
+            "held_within_balance": true,
+            "poller_sampled": true
+          }
+        },
+        "witness": {
+          "reserves": [
+            {
+              "request_ref": "c1321ab4bb1d4002b01e438ec19669e2",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:06:59.994148+00:00"
+            },
+            {
+              "request_ref": "30a49512236a42878157be7c39f57b25",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.372168+00:00"
+            },
+            {
+              "request_ref": "e0ad372b911b4c0b9b2c3f1157e81795",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.235244+00:00"
+            },
+            {
+              "request_ref": "1528d9ff7b3d46f1a1fc2e7730a4b6ba",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.178914+00:00"
+            },
+            {
+              "request_ref": "da561a9a755444ce811ff4951a00f9dd",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:00.582357+00:00"
+            },
+            {
+              "request_ref": "e1841513d92e41ae86afe4d5cb5357fe",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.148063+00:00"
+            },
+            {
+              "request_ref": "0668eb6241a84614855085a73cf40dde",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.336790+00:00"
+            },
+            {
+              "request_ref": "6fb95694c8aa4141a9792c638b307896",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.496314+00:00"
+            },
+            {
+              "request_ref": "7daaad00d34049a69d0ba03d52be59fa",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:00.982915+00:00"
+            },
+            {
+              "request_ref": "d2437867867b4fba890c1e5ffc4c85e4",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.206670+00:00"
+            },
+            {
+              "request_ref": "29362599d4824a3d9df9c5876aa01d8f",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:00.240547+00:00"
+            },
+            {
+              "request_ref": "1bd5f6938a9447a88c8bfb72d3d9ece2",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:00.908312+00:00"
+            },
+            {
+              "request_ref": "0378fd6d740840e1be84dcde04df1b85",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.163308+00:00"
+            },
+            {
+              "request_ref": "cdfd915ac09540aeba6c7e581232fbc8",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.517338+00:00"
+            },
+            {
+              "request_ref": "0ed73b26417144a9b299eeaa624a6190",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:00.961460+00:00"
+            },
+            {
+              "request_ref": "12c489a1e6bb417da36d10f72ab4c1b3",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.005189+00:00"
+            },
+            {
+              "request_ref": "892a39ce54a84c0cb363a62407a14ebd",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:00.886333+00:00"
+            },
+            {
+              "request_ref": "0e23f7039b414609a2912c8a6ecf21db",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.265399+00:00"
+            },
+            {
+              "request_ref": "b36d45858dc34c4c9a5c7b516f733b47",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.545926+00:00"
+            },
+            {
+              "request_ref": "ee642b78cdd447db8a09db9c82c35a16",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.315081+00:00"
+            },
+            {
+              "request_ref": "73eefa8d281b441da249643902c3d6a0",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.246961+00:00"
+            },
+            {
+              "request_ref": "946137cc3f8e4dbbb71211c409f8972c",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.408577+00:00"
+            },
+            {
+              "request_ref": "7e45e7fab87d4824aafc32e6b4339a4e",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.297257+00:00"
+            },
+            {
+              "request_ref": "8ee74f36ac4b4f6a8e00d15db749a5c3",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.707994+00:00"
+            },
+            {
+              "request_ref": "fe0a9161e4c34f788e31f7769ea4769d",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.459279+00:00"
+            },
+            {
+              "request_ref": "91202153dc594333ba34e263ee004cdd",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.445883+00:00"
+            },
+            {
+              "request_ref": "bfc11d7a833042b68f6c21075db94982",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.281854+00:00"
+            },
+            {
+              "request_ref": "c560fdad3c7d482088d7991f1836bdde",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.357370+00:00"
+            },
+            {
+              "request_ref": "128ae59aeceb432685e2e20decc1635c",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.618321+00:00"
+            },
+            {
+              "request_ref": "c230a71c989541729cb107a2f40b5942",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.860411+00:00"
+            },
+            {
+              "request_ref": "1cd3ba07a3cc4972bda84b60c2b1405e",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.391575+00:00"
+            },
+            {
+              "request_ref": "d12fc252c7d9492c94598df1c572fa85",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.648295+00:00"
+            },
+            {
+              "request_ref": "f0fdeef955b641ec9ff1eb2afc00008c",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.471660+00:00"
+            },
+            {
+              "request_ref": "4ffcfb6c84774542baf727356ee6fb07",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.208140+00:00"
+            },
+            {
+              "request_ref": "cf781f51eae7440d983baf8be65f9339",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.213179+00:00"
+            },
+            {
+              "request_ref": "cfb035b147c14d26ab29eb093b531e38",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.670183+00:00"
+            },
+            {
+              "request_ref": "75904e03a68d4dc6828bf938d4fa231f",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.833667+00:00"
+            },
+            {
+              "request_ref": "9d912ba208c04be2ba30c584c70d2590",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.241030+00:00"
+            },
+            {
+              "request_ref": "5a9266872c7544b1a246d6ec292f1396",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.068606+00:00"
+            },
+            {
+              "request_ref": "dd98758942b34e54a3763b4ae6011f67",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.760590+00:00"
+            },
+            {
+              "request_ref": "e68bd16632534667ac71ce6f5465dfa7",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.636350+00:00"
+            },
+            {
+              "request_ref": "8910cb177c4847e4a0e5df51ac2fff88",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.576908+00:00"
+            },
+            {
+              "request_ref": "eb6d4ffaa08f43ea993cf217bd5ddcc9",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.599335+00:00"
+            },
+            {
+              "request_ref": "1360b271c2e84fa2b0eea5202076b0be",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.514769+00:00"
+            },
+            {
+              "request_ref": "612427784ebc44fa95c4b10224b61ccf",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.738124+00:00"
+            },
+            {
+              "request_ref": "0c63f7680c654140bcdbd028f8978028",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.881635+00:00"
+            },
+            {
+              "request_ref": "69310fbb48fb43068079e9675f9a956b",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.779012+00:00"
+            },
+            {
+              "request_ref": "2f89129833ac41ccb81974fc4cdd2a23",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.978993+00:00"
+            },
+            {
+              "request_ref": "c9114838c352474e9762cf87241d4b91",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.113653+00:00"
+            },
+            {
+              "request_ref": "6feb262d931a46db996ce4bfc6815688",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.957013+00:00"
+            },
+            {
+              "request_ref": "f67afabf7fa440ab8c1f699f8ecb86f0",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.809736+00:00"
+            },
+            {
+              "request_ref": "42030330f2e745f39e8d33fec9e961a0",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.810999+00:00"
+            },
+            {
+              "request_ref": "f7632fad08434efea0ca5cf5f0cadc8b",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.997277+00:00"
+            },
+            {
+              "request_ref": "891bd61bb5a842df8d65b92b762db328",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.348548+00:00"
+            },
+            {
+              "request_ref": "a7371cf3dbd3454d93a0312491025011",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.914671+00:00"
+            },
+            {
+              "request_ref": "96991310332c4adfba04b8b2c214790d",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.323374+00:00"
+            },
+            {
+              "request_ref": "77eb2e29e6c546698c450b5d2eac84d4",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.178232+00:00"
+            },
+            {
+              "request_ref": "3449864eeb454cbfb04aaf8a3f463501",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.931604+00:00"
+            },
+            {
+              "request_ref": "33cd40105b67438ab92c96156f7e7ee8",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.291023+00:00"
+            },
+            {
+              "request_ref": "df13dd31dd054eafaae3d51dc964125c",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.152075+00:00"
+            },
+            {
+              "request_ref": "ac4d4d33508044fca70741c33a293d98",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.035789+00:00"
+            },
+            {
+              "request_ref": "0c83b27de6154ff096432a6d99159a2f",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.366838+00:00"
+            },
+            {
+              "request_ref": "6c5c4536cf6a454a8fa6f03be80f4e52",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.593627+00:00"
+            },
+            {
+              "request_ref": "42dfea8032794cca970a6f897dc8ed5c",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.319284+00:00"
+            },
+            {
+              "request_ref": "9771364e1cd748389a278a3bc3423230",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.437607+00:00"
+            },
+            {
+              "request_ref": "f744677d5bc44a37a9c8d12bd9744e84",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.184046+00:00"
+            },
+            {
+              "request_ref": "634d05ef392744f488c2a766a35fb2f6",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.659406+00:00"
+            },
+            {
+              "request_ref": "2654fdb96e8c40cb9b355c92f405d7fe",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.688033+00:00"
+            },
+            {
+              "request_ref": "693e1af47e214de2bb822b95e0c78781",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.875927+00:00"
+            },
+            {
+              "request_ref": "de0a0a348efd4be7a6b7373f2fa67c25",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.858477+00:00"
+            },
+            {
+              "request_ref": "6ec88411eb7b46ac91308380f475a347",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.394182+00:00"
+            },
+            {
+              "request_ref": "069a214115104e148a8821fdc02a458e",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.461515+00:00"
+            },
+            {
+              "request_ref": "bd73625b88564cc1a5bdaf795c7b5f76",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.552106+00:00"
+            },
+            {
+              "request_ref": "040cfbf2c780456289bea87d2fee789d",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.031581+00:00"
+            },
+            {
+              "request_ref": "7610a7b405584e278caf1238cf2796aa",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.410191+00:00"
+            },
+            {
+              "request_ref": "5d21f0dfe851499ca387722314427046",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.492569+00:00"
+            },
+            {
+              "request_ref": "c675aa5472e2498eb78dcd66eddcf817",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.578786+00:00"
+            },
+            {
+              "request_ref": "e7e8c23e1ec943fdada45bbf369a154c",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.004483+00:00"
+            },
+            {
+              "request_ref": "c693959f7a3a41b38e4bf2c1eb7a9ef7",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.732007+00:00"
+            },
+            {
+              "request_ref": "331f472f259b4e708efc019f5042e50d",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.609322+00:00"
+            },
+            {
+              "request_ref": "b781a91cbe8748d4ba809f14235b1bd7",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.127256+00:00"
+            },
+            {
+              "request_ref": "2305e45bac6040fc8b8695bb34933769",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.909290+00:00"
+            },
+            {
+              "request_ref": "f968fa5691cb415bb2dcfe20fbf2e3b9",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.749446+00:00"
+            },
+            {
+              "request_ref": "ad0fcf7b28a4471bb432e90f533fca3d",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.954450+00:00"
+            },
+            {
+              "request_ref": "a347cc8f121b44efb53cee6e9a6ce8c1",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.709996+00:00"
+            },
+            {
+              "request_ref": "b05f130d2c18407faa1b7303a6ae804e",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.785987+00:00"
+            },
+            {
+              "request_ref": "a0d3d75fae54442a856f42ce1dbb9b7e",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.832027+00:00"
+            },
+            {
+              "request_ref": "650eff4342494e279f794116dba33076",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.051894+00:00"
+            },
+            {
+              "request_ref": "05524ab91cb7423a935377d6b154731a",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.147365+00:00"
+            },
+            {
+              "request_ref": "0ccb3eee6b8845bf9923eec6fc0044b8",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.935504+00:00"
+            },
+            {
+              "request_ref": "4ddc047aeb6b47e2a429b8f8cd6b8241",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.897322+00:00"
+            },
+            {
+              "request_ref": "8ceab6b636764e6d80b7ac112d848474",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:01.431606+00:00"
+            },
+            {
+              "request_ref": "836387007dd143cc8ee4271e9f292ecb",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:02.983932+00:00"
+            },
+            {
+              "request_ref": "0dba453fef94468f8925339c5521fd86",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.295543+00:00"
+            },
+            {
+              "request_ref": "798337d6758343f59f1d9b9b56c66424",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.100724+00:00"
+            },
+            {
+              "request_ref": "6571bc81bf9b4f33ad26f6a652ab45ee",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.113967+00:00"
+            },
+            {
+              "request_ref": "46fa3d6275274375b4249293269cd95c",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.077136+00:00"
+            },
+            {
+              "request_ref": "9bf8daff7d5647c58ca19eed9c739828",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.258403+00:00"
+            },
+            {
+              "request_ref": "13aada4341df45349f76277ea434b357",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.169317+00:00"
+            },
+            {
+              "request_ref": "f1624850c25f471a8e0d1eb398551972",
+              "amount_kopecks": 1,
+              "status": "released",
+              "settled_kopecks": null,
+              "released_at": "2026-10-05 18:07:03.234831+00:00"
+            }
+          ],
+          "open_items": 0,
+          "duplicate_references": 0,
+          "wallet": {
+            "id": "65a77975-e789-4423-ba6b-9ea83f88dd3e",
+            "balance_kopecks": 4000,
+            "reserved_kopecks": 0
+          },
+          "postings_sum": "4000",
+          "global": {}
+        },
+        "poller": {
+          "samples": 2245,
+          "max_reserved": 95,
+          "max_held_sum": 95
+        }
+      }
+    },
+    {
+      "area": "global ledger invariants",
+      "expected": "no negative reserved wallet; every wallet balance equals its posting sum",
+      "observed": "negative_reserved=0 balance_projection_mismatches=0",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "reserve references unique",
+      "expected": "no duplicate request references for the test keys",
+      "observed": "tiny_dups=0 ample_dups=0",
+      "ok": true,
+      "blocked": false,
+      "detail": null
+    },
+    {
+      "area": "settle/double-charge concurrency with real usage",
+      "expected": "successful upstream call settles exactly once under concurrency",
+      "observed": "BLOCKED: provider upstream returned HTTP 401: {\"error\":{\"message\":\"API key expired.\",\"code\":401,\"metadata\":{\"headers\":{\"WWW-Authenticate\":\"Bearer error=\\\"invalid_token\\\", error_description=\\\"API key expired\\\"\"}}}}",
+      "ok": false,
+      "blocked": true,
+      "detail": null
+    }
+  ]
+}
