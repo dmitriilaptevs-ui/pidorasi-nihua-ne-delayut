@@ -10,11 +10,13 @@ import {
   formatDate,
   formatNumber,
   formatRub,
+  type AgentItem,
   type CatalogItem,
   type KeyItem,
   type LedgerItem,
   type ReconciliationView,
   type PaymentItem,
+  type ProviderCredential,
   type RequestItem,
   type Viewer,
   type WalletState,
@@ -33,6 +35,15 @@ export function AccountPanel() {
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [keys, setKeys] = useState<KeyItem[]>([]);
+  const [providerCredential, setProviderCredential] = useState<ProviderCredential>({ configured: false, suffix: null, updated_at: null });
+  const [providerKey, setProviderKey] = useState("");
+  const [agents, setAgents] = useState<AgentItem[]>([]);
+  const [agentEngine, setAgentEngine] = useState<AgentItem["id"]>("hermes");
+  const [agentApiKey, setAgentApiKey] = useState("");
+  const [agentModel, setAgentModel] = useState("");
+  const [agentPrompt, setAgentPrompt] = useState("");
+  const [agentResult, setAgentResult] = useState<string | null>(null);
+  const [keyFundingSource, setKeyFundingSource] = useState<"platform" | "customer">("platform");
   const [ledger, setLedger] = useState<LedgerItem[]>([]);
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
@@ -53,13 +64,15 @@ export function AccountPanel() {
   const load = useCallback(async () => {
     const me = await apiFetch<{ user: Viewer }>("/api/auth/me");
     setViewer(me.user);
-    const [walletData, keysData, ledgerData, requestsData, paymentsData, catalogData] = await Promise.all([
+    const [walletData, keysData, ledgerData, requestsData, paymentsData, catalogData, credentialData, agentData] = await Promise.all([
       apiFetch<{ wallet: WalletState }>("/api/wallet"),
       apiFetch<{ items: KeyItem[] }>("/api/keys"),
       apiFetch<{ items: LedgerItem[] }>("/api/wallet/ledger"),
       apiFetch<{ items: RequestItem[] }>("/api/requests?limit=20"),
       apiFetch<{ items: PaymentItem[] }>("/api/payments"),
       apiFetch<{ items: CatalogItem[]; total: number }>("/api/catalog?limit=100"),
+      apiFetch<ProviderCredential>("/api/provider-credentials"),
+      apiFetch<{ items: AgentItem[] }>("/api/agents"),
     ]);
     setWallet(walletData.wallet);
     setKeys(keysData.items);
@@ -68,11 +81,17 @@ export function AccountPanel() {
     setPayments(paymentsData.items);
     setCatalog(catalogData.items.filter((item) => item.available));
     setCatalogTotal(catalogData.total);
+    setProviderCredential(credentialData);
+    setAgents(agentData.items);
     if (me.user.role === "admin") {
       const queue = await apiFetch<{ items: ReconciliationView[] }>("/api/admin/reconciliation");
       setReconciliation(queue.items);
     }
   }, []);
+
+  useEffect(() => {
+    if (!agentModel && catalog.length) setAgentModel(catalog[0].id);
+  }, [agentModel, catalog]);
 
   useEffect(() => {
     load().catch((err: unknown) => {
@@ -103,11 +122,12 @@ export function AccountPanel() {
       if (limit !== null && (!Number.isFinite(limit) || limit < 0)) throw new Error("Лимит указан неверно.");
       const data = await apiFetch<{ key: string; item: KeyItem }>("/api/keys", {
         method: "POST",
-        body: JSON.stringify({ name: keyName.trim() || "Ключ", monthly_limit_kopecks: limit }),
+        body: JSON.stringify({ name: keyName.trim() || "Ключ", monthly_limit_kopecks: limit, funding_source: keyFundingSource }),
       });
       setFreshKey(data.key);
       setKeyName("");
       setKeyLimit("");
+      setKeyFundingSource("platform");
       setNotice("Ключ создан. Скопируйте его сейчас — он показывается один раз.");
     });
 
@@ -149,6 +169,45 @@ export function AccountPanel() {
         `Проверено ${report.seen}: новых ${report.created}, переоценено ${report.repriced}, без изменений ${report.unchanged}, недоступно ${report.unavailable}.`,
       );
     });
+
+  const saveProviderKey = () =>
+    guard(async () => {
+      if (!providerKey.trim()) throw new Error("Введите ключ OpenRouter.");
+      await apiFetch("/api/provider-credentials", { method: "PUT", body: JSON.stringify({ api_key: providerKey.trim() }) });
+      setProviderKey("");
+      setNotice("Ключ OpenRouter сохранён на сервере.");
+    });
+
+  const removeProviderKey = () =>
+    guard(async () => {
+      if (!window.confirm("Удалить сохранённый ключ OpenRouter?")) return;
+      await apiFetch("/api/provider-credentials", { method: "DELETE" });
+      setProviderKey("");
+      setKeyFundingSource("platform");
+      setNotice("Ключ OpenRouter удалён.");
+    });
+
+  const runAgent = async () => {
+    setBusy(true);
+    setError(null);
+    setAgentResult(null);
+    try {
+      if (!agentApiKey.trim()) throw new Error("Введите ключ платформы для запуска агента.");
+      if (!agentModel) throw new Error("В каталоге нет доступных моделей.");
+      if (!agentPrompt.trim()) throw new Error("Введите задачу для агента.");
+      const result = await apiFetch<{ engine: AgentItem["id"]; text: string }>("/api/agents/run", {
+        method: "POST",
+        body: JSON.stringify({ engine: agentEngine, api_key: agentApiKey.trim(), model: agentModel, prompt: agentPrompt.trim() }),
+      });
+      setAgentResult(result.text);
+      setAgentApiKey("");
+    } catch (err) {
+      setError(err instanceof ApiClientError || err instanceof Error ? err.message : "Не удалось запустить агента.");
+    } finally {
+      setAgentApiKey("");
+      setBusy(false);
+    }
+  };
 
   const visibleModels = useMemo(() => {
     const needle = filter.trim().toLowerCase();
@@ -225,6 +284,25 @@ export function AccountPanel() {
             Деньги списываются только после ответа модели, а при ошибке провайдера резерв возвращается. Сейчас
             пополнение работает в тестовом режиме: реальные деньги не принимаются.
           </p>
+        </section>
+
+        <section className="rb-card" aria-label="Ключ OpenRouter">
+          <h2>Ваш ключ OpenRouter</h2>
+          <p className="rb-muted">Ключ хранится на сервере и применяется только к запросам API-ключей с источником оплаты «Мой OpenRouter».</p>
+          <div className="rb-actions">
+            <span className={providerCredential.configured ? "rb-badge rb-badge--ok" : "rb-badge rb-badge--warn"}>
+              {providerCredential.configured ? `Настроен · …${providerCredential.suffix ?? ""}` : "Не настроен"}
+            </span>
+            {providerCredential.updated_at ? <span className="rb-muted">Обновлён {formatDate(providerCredential.updated_at)}</span> : null}
+          </div>
+          <div className="rb-field" style={{ maxWidth: 520, marginTop: 12 }}>
+            <label htmlFor="provider-key">{providerCredential.configured ? "Новый ключ OpenRouter" : "Ключ OpenRouter"}</label>
+            <input id="provider-key" type="password" autoComplete="new-password" value={providerKey} onChange={(event) => setProviderKey(event.target.value)} placeholder="Вставьте ключ OpenRouter" />
+          </div>
+          <div className="rb-actions">
+            <button className="rb-btn rb-btn--sm" type="button" onClick={saveProviderKey} disabled={busy || !providerKey.trim()}>{providerCredential.configured ? "Заменить ключ" : "Сохранить ключ"}</button>
+            {providerCredential.configured ? <button className="rb-btn rb-btn--danger rb-btn--sm" type="button" onClick={removeProviderKey} disabled={busy}>Удалить ключ</button> : null}
+          </div>
         </section>
 
         <section className="rb-card" aria-label="Пополнение">
@@ -323,6 +401,14 @@ export function AccountPanel() {
                 placeholder="3000"
               />
             </div>
+            <div className="rb-field">
+              <label htmlFor="key-funding-source">Источник оплаты</label>
+              <select id="key-funding-source" value={keyFundingSource} onChange={(event) => setKeyFundingSource(event.target.value as "platform" | "customer")}>
+                <option value="platform">Баланс платформы</option>
+                <option value="customer" disabled={!providerCredential.configured}>Мой ключ OpenRouter</option>
+              </select>
+              {!providerCredential.configured ? <span className="rb-muted">Чтобы выбрать оплату своим ключом, сначала сохраните его выше.</span> : null}
+            </div>
           </div>
           <div className="rb-actions">
             <button className="rb-btn" type="button" onClick={createKey} disabled={busy || !viewer.email_verified}>
@@ -337,6 +423,7 @@ export function AccountPanel() {
               <tr>
                 <th>Ключ</th>
                 <th>Название</th>
+                <th>Оплата</th>
                 <th>Лимит</th>
                 <th>Создан</th>
                 <th>Статус</th>
@@ -348,6 +435,7 @@ export function AccountPanel() {
                 <tr key={item.id}>
                   <td className="rb-table__num">{item.prefix}…</td>
                   <td>{item.name}</td>
+                  <td>{item.funding_source === "customer" ? "Мой OpenRouter" : "Баланс платформы"}</td>
                   <td className="rb-table__num">
                     {item.monthly_limit_kopecks === null ? "—" : formatRub(item.monthly_limit_kopecks)}
                   </td>
@@ -376,13 +464,65 @@ export function AccountPanel() {
               ))}
               {keys.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="rb-muted">
+                  <td colSpan={7} className="rb-muted">
                     Ключей пока нет.
                   </td>
                 </tr>
               ) : null}
             </tbody>
           </table>
+          </div>
+        </section>
+
+        <section className="rb-card" aria-label="Веб-агенты">
+          <h2>Веб-агенты</h2>
+          <p className="rb-muted">Запустите текстовую задачу в Hermes или Pi. Ключ платформы отправляется только на время запроса и не сохраняется в браузере. Вызов инструментов пока отключён.</p>
+          <div className="rb-grid">
+            {agents.map((agent) => (
+              <article className="rb-stat" key={agent.id}>
+                <h3 className="rb-feature__title">{agent.name}</h3>
+                <p className="rb-muted">{agent.description}</p>
+                <span className={agent.available ? "rb-badge rb-badge--ok" : "rb-badge rb-badge--warn"}>{agent.available ? "Доступен" : "Недоступен"}</span>
+              </article>
+            ))}
+          </div>
+          <div className="rb-grid" style={{ marginTop: 16 }}>
+            <div className="rb-field">
+              <label htmlFor="agent-engine">Агент</label>
+              <select id="agent-engine" value={agentEngine} onChange={(event) => setAgentEngine(event.target.value as AgentItem["id"])}>
+                {agents.map((agent) => <option key={agent.id} value={agent.id} disabled={!agent.available}>{agent.name}{agent.available ? "" : " (недоступен)"}</option>)}
+              </select>
+            </div>
+            <div className="rb-field">
+              <label htmlFor="agent-model">Модель из каталога</label>
+              <select id="agent-model" value={agentModel} onChange={(event) => setAgentModel(event.target.value)}>
+                {catalog.filter((item) => item.available).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.id}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="rb-field" style={{ maxWidth: 520 }}>
+            <label htmlFor="agent-platform-key">Ключ платформы</label>
+            <input id="agent-platform-key" type="password" autoComplete="new-password" value={agentApiKey} onChange={(event) => setAgentApiKey(event.target.value)} placeholder="Вставьте ключ платформы" />
+          </div>
+          <div className="rb-field">
+            <label htmlFor="agent-prompt">Задача</label>
+            <textarea id="agent-prompt" rows={4} value={agentPrompt} onChange={(event) => setAgentPrompt(event.target.value)} placeholder="Опишите, что нужно сделать" />
+          </div>
+          <button className="rb-btn" type="button" onClick={runAgent} disabled={busy || !agents.find((agent) => agent.id === agentEngine)?.available || !agentApiKey.trim() || !agentModel || !agentPrompt.trim()}>
+            Запустить агента
+          </button>
+          {agentResult ? <pre className="rb-agent-result" role="status">{agentResult}</pre> : null}
+          <h3 className="rb-feature__title" style={{ marginTop: 22 }}>Настройка агента на своём компьютере</h3>
+          <p className="rb-muted">Замените <code>https://ваш-сайт</code> на адрес сайта, а значение ключа — на свой ключ платформы. Эти настройки подключают агента к API платформы; сохранённый выше ключ OpenRouter в них не передаётся.</p>
+          <div className="rb-grid">
+            <div>
+              <p><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noreferrer">Hermes Agent · официальный репозиторий</a></p>
+              <pre className="rb-agent-code">{`# Задайте эти переменные в ~/.hermes/.env\nOPENAI_API_KEY=ВАШ_КЛЮЧ_ПЛАТФОРМЫ\nOPENAI_BASE_URL=https://ваш-сайт/v1`}</pre>
+            </div>
+            <div>
+                <p><a href="https://github.com/earendil-works/pi" target="_blank" rel="noreferrer">Pi · репозиторий проекта</a></p>
+              <pre className="rb-agent-code">{`# ~/.pi/agent/models.json\n{\n  "providers": {\n    "rubai": {\n      "baseUrl": "https://ваш-сайт/v1",\n      "api": "openai-completions",\n      "apiKey": "OPENAI_API_KEY",\n      "models": [{ "id": "ID_МОДЕЛИ_ИЗ_КАТАЛОГА" }]\n    }\n  }\n}`}</pre>
+            </div>
           </div>
         </section>
 

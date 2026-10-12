@@ -14,19 +14,23 @@ from typing import Any
 import fakeredis.aioredis
 import httpx
 import pytest
+from app.local_postgres import start_postgres
 
 TOKEN_RE = re.compile(r"token=([A-Za-z0-9_-]{43})")
 
-_BOX: list[dict[str, str]] = []
+_POSTGRES_SERVER: Any | None = None
 
 
 def pytest_configure(config: pytest.Config) -> None:
+    global _POSTGRES_SERVER
+
     data_dir = tempfile.mkdtemp(prefix="rubai-pg-")
-    server = pgserver_start(data_dir)
-    os.environ["DATABASE_URL"] = server.get_uri().replace("postgresql://", "postgresql+asyncpg://", 1)
+    _POSTGRES_SERVER = start_postgres(data_dir)
+    os.environ["DATABASE_URL"] = _POSTGRES_SERVER.get_uri().replace("postgresql://", "postgresql+asyncpg://", 1)
     os.environ["APP_ENV"] = "test"
     os.environ["PUBLIC_ORIGIN"] = "http://localhost:3001"
     os.environ["MAIL_TRANSPORT"] = "console"
+    os.environ["PROVIDER_KEY_ENCRYPTION_KEY"] = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
     os.environ.setdefault("SESSION_SECRET", "test-only-secret-not-used-by-api")
 
     from alembic import command
@@ -39,10 +43,13 @@ def pytest_configure(config: pytest.Config) -> None:
     command.upgrade(cfg, "head")
 
 
-def pgserver_start(data_dir: str):
-    import pgserver
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if _POSTGRES_SERVER is None or _POSTGRES_SERVER.get_pid() is None:
+        return
 
-    return pgserver.get_server(data_dir, cleanup_mode=None)
+    import pgserver._commands as commands
+
+    commands.pg_ctl(["-w", "stop"], pgdata=_POSTGRES_SERVER.pgdata)
 
 
 class RecordingMailer:
@@ -103,7 +110,7 @@ async def clean_database() -> Any:
         async with session_factory()() as db:
             await db.execute(
                 text(
-                    "TRUNCATE TABLE email_tokens, auth_sessions, oauth_handshakes, api_keys, "
+                    "TRUNCATE TABLE email_tokens, auth_sessions, oauth_handshakes, provider_credentials, api_keys, "
                     "catalog_pricing, catalog_models, ledger_postings, ledger_transactions, "
                     "reconciliation_items, reserves, wallets, payments, api_requests, users CASCADE"
                 )

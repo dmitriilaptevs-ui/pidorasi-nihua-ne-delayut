@@ -74,6 +74,20 @@ export interface KeyItem {
   revoked_at: string | null;
   last_used_at: string | null;
   monthly_limit_kopecks: number | null;
+  funding_source: "platform" | "customer";
+}
+
+export interface ProviderCredential {
+  configured: boolean;
+  suffix: string | null;
+  updated_at: string | null;
+}
+
+export interface AgentItem {
+  id: "hermes" | "pi";
+  name: string;
+  available: boolean;
+  description: string;
 }
 
 export interface LedgerItem {

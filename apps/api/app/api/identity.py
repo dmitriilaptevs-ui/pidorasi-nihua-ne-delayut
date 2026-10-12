@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request, Response
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..deps import (
     clear_session_cookie,
+    API_PROXY_HEADER,
     client_ip,
     current_user,
     get_db,
@@ -20,6 +22,7 @@ from ..schemas import ForgotRequest, LoginRequest, RegisterRequest, ResetRequest
 from ..services import identity as service
 from ..settings import settings
 from ..throttle import allow
+from ..security import constant_time_equals
 
 router = APIRouter(prefix="/api/auth", tags=["identity"])
 
@@ -65,7 +68,28 @@ async def providers() -> dict[str, bool]:
         "email_password": True,
         "vk": bool(settings.vk_client_id),
         "yandex": bool(settings.yandex_client_id),
+        "chatgpt": bool(settings.api_proxy_token),
     }
+
+
+@router.get("/sites")
+async def site_sign_in(
+    request: Request,
+    _: None = Depends(require_origin),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    if not settings.api_proxy_token or not constant_time_equals(request.headers.get(API_PROXY_HEADER, ""), settings.api_proxy_token):
+        raise ApiError(403, "invalid_proxy", "Вход доступен через сайт.")
+    subject = request.headers.get("x-rubai-sites-user-id", "")
+    email = request.headers.get("x-rubai-sites-user-email")
+    if not subject or len(subject) > 256 or (email and len(email) > 320):
+        raise ApiError(401, "site_identity_required", "Войдите в ChatGPT, чтобы открыть кабинет.")
+    user = await service.get_or_create_site_user(db, subject=subject, email=email)
+    _, token = await service.create_session(db, user=user, method="chatgpt")
+    await db.commit()
+    response = RedirectResponse("/account", status_code=303)
+    set_session_cookie(response, token)
+    return response
 
 
 @router.post("/register", status_code=201)

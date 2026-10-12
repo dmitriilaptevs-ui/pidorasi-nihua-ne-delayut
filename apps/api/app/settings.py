@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     service_name: str = "rubai-api"
     database_url: str = "postgresql+asyncpg://rubai:rubai@127.0.0.1:5432/rubai"
     redis_url: str = "redis://127.0.0.1:6379/0"
+    api_proxy_token: str = ""
+    agent_runtime_url: str = ""
+    agent_runtime_token: str = ""
 
     # Public web origin: cookie scope, links inside emails, Origin checks.
     public_origin: str = "http://localhost:3001"
@@ -58,6 +61,7 @@ class Settings(BaseSettings):
     # (DECISIONS.md D-05).
     openrouter_api_base: str = "https://openrouter.ai/api/v1"
     openrouter_api_key: str = ""
+    provider_key_encryption_key: str = ""
     fx_rate_rub_per_usd: Decimal = Decimal("100.0")
     price_markup: Decimal = Decimal("1.20")
 

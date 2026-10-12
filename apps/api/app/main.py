@@ -10,20 +10,25 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 
 from . import db, redis_client
 from .api.admin import admin_router
+from .api.agents import router as agents_router
 from .api.catalog import router as catalog_router
 from .api.gateway import router as gateway_router
 from .api.identity import router as identity_router
 from .api.keys import router as keys_router
 from .api.oauth import router as oauth_router
 from .api.payments import router as payments_router
+from .api.provider_credentials import router as provider_credentials_router
 from .api.requests import router as requests_router
 from .api.wallet import router as wallet_router
 from .errors import ApiError, api_error_handler
 from .settings import settings
+from .deps import API_PROXY_HEADER
+from .security import constant_time_equals
 
 # Container logs carry service messages only; secrets are never logged. The
 # console mail transport prints verification links in development only.
@@ -50,14 +55,31 @@ app = FastAPI(
 
 app.add_exception_handler(ApiError, api_error_handler)
 app.include_router(identity_router)
+app.include_router(agents_router)
 app.include_router(oauth_router)
 app.include_router(keys_router)
+app.include_router(provider_credentials_router)
 app.include_router(catalog_router)
 app.include_router(gateway_router)
 app.include_router(payments_router)
 app.include_router(requests_router)
 app.include_router(wallet_router)
 app.include_router(admin_router)
+
+
+@app.middleware("http")
+async def authenticate_site_proxy(request: Request, call_next):
+    is_api_request = request.url.path.startswith(("/api/", "/v1/"))
+    if is_api_request and settings.app_env == "production" and not settings.api_proxy_token:
+        return JSONResponse(status_code=503, content={"error": {"code": "proxy_not_configured", "message": "Сервер временно недоступен."}})
+    if settings.api_proxy_token and is_api_request:
+        supplied = request.headers.get(API_PROXY_HEADER, "")
+        if not constant_time_equals(supplied, settings.api_proxy_token):
+            return JSONResponse(status_code=403, content={"error": {"code": "invalid_proxy", "message": "Недопустимый запрос."}})
+    response = await call_next(request)
+    if is_api_request:
+        response.headers["cache-control"] = "private, no-store"
+    return response
 
 
 @app.get("/")

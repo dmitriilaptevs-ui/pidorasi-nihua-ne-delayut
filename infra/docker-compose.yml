@@ -40,8 +40,7 @@ services:
     build:
       context: ../apps/api
     env_file:
-      # Provider credentials and OpenRouter key live in the web env file; the
-      # api ignores names it does not define (extra="ignore").
+      # OAuth credentials are read by the API. This file is never passed to web.
       - ../apps/web/.env.local
     environment:
       # development keeps console mail readable (no SMTP yet); switch to
@@ -50,6 +49,12 @@ services:
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN in infra/.env}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rubai}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-rubai}
       REDIS_URL: redis://redis:6379/0
+      # Provider credentials are API-only. Never pass these as web build args.
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      PROVIDER_KEY_ENCRYPTION_KEY: ${PROVIDER_KEY_ENCRYPTION_KEY:-}
+      API_PROXY_TOKEN: ${API_PROXY_TOKEN:-}
+      AGENT_RUNTIME_URL: ${AGENT_RUNTIME_URL:-}
+      AGENT_RUNTIME_TOKEN: ${AGENT_RUNTIME_TOKEN:-}
       # Verification/reset mail is console-only until SMTP credentials exist;
       # in production the console transport refuses to print tokens.
       MAIL_TRANSPORT: ${API_MAIL_TRANSPORT:-console}
@@ -75,8 +80,6 @@ services:
       args:
         # Rewrites are compiled into the build; api is the compose service name.
         API_ORIGIN: http://api:8080
-    env_file:
-      - ../apps/web/.env.local
     environment:
       # Public HTTPS origin served by the tunnel; overrides the local default.
       APP_ORIGIN: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN in infra/.env}

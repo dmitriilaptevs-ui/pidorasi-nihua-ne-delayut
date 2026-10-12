@@ -11,7 +11,9 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "proxy": "node scripts/local-proxy.mjs"
+    "proxy": "node scripts/local-proxy.mjs",
+    "sites:dev": "vinext dev --port 5173",
+    "sites:build": "vinext build"
   },
   "engines": {
     "node": ">=22.19.0"
@@ -26,11 +28,24 @@
     "undici": "8.11.2"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "1.37.1",
+    "@cloudflare/workers-types": "4.20260515.1",
     "@playwright/test": "1.63.0",
     "@types/node": "26.6.4",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-rsc": "^0.5.26",
+    "react-server-dom-webpack": "^19.3.0",
     "typescript": "7.0.2",
-    "vitest": "5.0.3"
+    "vinext": "1.0.0-beta.5",
+    "vite": "8.0.13",
+    "vitest": "5.0.3",
+    "wrangler": "4.92.0"
+  },
+  "overrides": {
+    "miniflare": {
+      "sharp": "0.35.4"
+    }
   }
 }

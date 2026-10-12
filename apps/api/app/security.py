@@ -49,4 +49,4 @@ def token_digest(token: str) -> str:
 
 
 def constant_time_equals(left: str, right: str) -> bool:
-    return hmac.compare_digest(left, right)
+    return hmac.compare_digest(left.encode("utf-8"), right.encode("utf-8"))

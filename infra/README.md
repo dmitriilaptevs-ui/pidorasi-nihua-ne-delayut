@@ -1,73 +1,118 @@
-# Инфраструктура: запуск стека на ноутбуке
+# Private deployment
 
-Развёртывание по [ADR-0002](../../docs/adr/0002-hosting-topology.md): стек работает на этом ноутбуке, публичный HTTPS-вход — исходящий туннель, исходящие вызовы к OpenRouter идут через существующий туннель Happ → DE.
+The initial rollout is private. The intended request path is:
 
-## Состав
-
-| Сервис | Образ | Порт на хосте | Назначение |
-| --- | --- | --- | --- |
-| `db` | postgres:16-alpine | — (только внутри сети) | PostgreSQL, том `db-data` |
-| `redis` | redis:7-alpine | — | лимиты/кеш, без финансовой истины |
-| `api` | сборка `apps/api` | `127.0.0.1:8080` | FastAPI, `/healthz`, `/readyz` |
-| `web` | сборка `apps/web` | `127.0.0.1:3001` | Next.js «Холст» |
-
-Наружу не публикуется ни один порт: публичный доступ даёт только туннель. Лимиты памяти: db 512m, redis 192m, api 512m, web 640m — стек не должен вытеснять рабочий стол.
-
-## Предварительно (один раз)
-
-1. Доступ к Docker (интерактивно, пароль вводит владелец):
-   `sudo usermod -aG docker dima`
-   Проверка в новой команде: `sg docker -c 'docker ps'`.
-2. `cp infra/.env.example infra/.env` и заполнить `POSTGRES_PASSWORD` и `PUBLIC_ORIGIN` (режим `0600`).
-3. Секреты OAuth/OpenRouter — в существующем `apps/web/.env.local` (`0600`), он же читается контейнером `web`.
-
-## Запуск
-
-```bash
-cd infra
-cp .env.example .env   # один раз, затем отредактировать
-docker compose up -d --build
-docker compose ps
-curl -s http://127.0.0.1:8080/readyz
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3001/api/status
+```text
+browser → Sites Worker → API on the owner's computer
+                         ├─ PostgreSQL
+                         ├─ Redis
+                         └─ loopback Hermes/Pi broker (when enabled)
 ```
 
-Остановка без удаления данных: `docker compose down`. Полный сброс данных: `docker compose down -v` (уничтожает том `db-data`).
+The Worker is the public entry point and proxies API requests to the computer
+running this compose stack. Keep the API published on loopback and establish
+the upstream network path separately; do not expose the API or agent broker
+directly to the internet. Configure an allowlist at the Worker during the
+private rollout.
 
-## Туннель
+## Secrets and trust boundaries
 
-| Вариант | Команда | Статус (2026-10-05) |
-| --- | --- | --- |
-| localhost.run | `ssh -R 80:localhost:3001 nokey@localhost.run` | **Используется**: текущий адрес `https://8708c5f8153fe4.lhr.life`, владелец подтвердил открытие из РФ без VPN |
-| Tailscale Funnel | включить на <https://login.tailscale.com/f/funnel>, затем `tailscale funnel --bg 3001` | Не включён в tailnet — CLI отвечает «Funnel is not enabled»; ожидает повторного включения владельцем |
-| Cloudflare Tunnel | `cloudflared tunnel --url http://127.0.0.1:3001` | Не работает с этого хоста: edge недоступен (TCP handshake EOF и QUIC timeout) |
+Copy `infra/.env.example` to `infra/.env` and restrict its permissions to the
+operator. Compose injects `OPENROUTER_API_KEY`,
+`PROVIDER_KEY_ENCRYPTION_KEY`, `API_PROXY_TOKEN`, and agent runtime settings
+into the **API container only**. They are runtime values, never frontend
+environment variables or Docker build arguments. The API's OAuth credentials
+remain in `apps/web/.env.local`; compose passes that file to the API only.
+The web container gets the public origin and a build-time internal API URL,
+with no provider credential.
 
-Поддомен localhost.run меняется при переподключении. После смены туннеля обновить `PUBLIC_ORIGIN` в `infra/.env` и перезапустить `web`:
-`docker compose up -d web`.
+`OPENROUTER_API_KEY` funds platform-issued keys. A user's own OpenRouter BYOK
+is submitted through the account UI and encrypted at rest by the API with
+`PROVIDER_KEY_ENCRYPTION_KEY`. The raw BYOK is not returned after saving.
+Platform API keys are shown once when created; the database stores a digest
+and prefix, and later listings show only the prefix. A lost key must be
+revoked and replaced.
 
-## Выполненные проверки (2026-10-05)
+Set `API_PROXY_TOKEN` to a random secret and configure the Sites Worker to
+send it as `X-Rubai-Proxy-Token` on `/api/*` and `/v1/*` requests. The API
+rejects those requests when the token is configured and missing or incorrect.
+Production mode rejects all API traffic when this token is not configured.
+Store this value as a Worker secret; never put it in browser-visible code.
 
-| Проверка | Результат |
-| --- | --- |
-| `docker compose up -d --build` | db/redis/api/web запущены, api `/readyz` → 200 `{database:true, redis:true}` |
-| Внешний адрес через туннель | `/` → 307 на `/canvas`, `/api/status` → 200, POST с Origin туннеля доходит до проверки сессии (401, не 403) |
-| Перезапуск контейнеров | `docker compose restart` → все четыре healthy, эндпоинты отвечают |
-| Backup → снос → restore | маркерная строка восстановлена из дампа (`drill-1 \| before-backup`) |
-| Изоляция портов | опубликованы только `127.0.0.1:3001` и `127.0.0.1:8080`; db/redis наружу не выставлены |
-| Влияние на рабочий стол | loopback-прокси `127.0.0.1:80`, `tailscaled` и `docker` не затронуты, хост не перезагружался |
+## Start the private origin
 
-## Backup и restore
+1. Create `infra/.env` from `.env.example`. Set database credentials,
+   `PUBLIC_ORIGIN`, a strong `API_PROXY_TOKEN`, the platform OpenRouter key if
+   platform-funded requests are enabled, and a URL-safe Base64 32-byte
+   `PROVIDER_KEY_ENCRYPTION_KEY` before allowing users to save BYOK.
+2. Put the OAuth provider values in `apps/web/.env.local`. Keep both env files
+   untracked and readable only by the operator.
+3. Start the stack:
 
-```bash
-infra/scripts/backup.sh                      # ~/rubai-backups/rubai-<ts>.dump + sha256, хранит 10 последних
-CONFIRM_RESTORE=yes infra/scripts/restore.sh ~/rubai-backups/rubai-<ts>.dump
+   ```bash
+   cd infra
+   docker compose up -d --build
+   docker compose ps
+   curl -fsS http://127.0.0.1:8080/readyz
+   curl -fsS http://127.0.0.1:3001/api/status
+   ```
+
+4. Configure the Sites Worker to proxy to the private origin and send the
+   proxy token. Verify the allowlist, API authentication, cookie origin, and
+   upstream reachability before inviting initial users.
+
+Compose publishes only loopback ports (`127.0.0.1:8080` for API and
+`127.0.0.1:3001` for web); PostgreSQL and Redis have no host ports. The web
+image receives only `API_ORIGIN` at build time so its rewrites can reach the
+API service inside Compose.
+
+## This Windows computer
+
+The current computer uses local PostgreSQL and Redis because Docker is not
+installed. `infra/scripts/start-local.ps1` loads Windows DPAPI-protected secrets
+from the ignored `data/runtime-secrets.json`, starts PostgreSQL, checks or starts
+Redis, applies migrations, and launches the API and agent broker in hidden
+windows. Run it from PowerShell 7. The API Python environment must have the
+development requirements installed, including `pgserver`.
+
+The ignored `data/runtime-config.json` contains `public_origin` (the Sites
+address), `api_origin` (the HTTPS tunnel address), and `redis_directory` (the
+installed Redis directory, relative to the repository). Redis reads
+`data/redis/redis.conf`; it must bind to loopback. Keep these files and the
+database backed up separately from Git. DPAPI-protected secrets can only be
+decrypted by this Windows account; database backups also need the original
+`PROVIDER_KEY_ENCRYPTION_KEY` to recover customer credentials.
+
+The active HTTPS connection uses `localhost.run`:
+
+```powershell
+ssh -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -T -R 80:127.0.0.1:8080 nokey@localhost.run
 ```
 
-Учебное восстановление: сделать бэкап, `docker compose exec -T db psql -U rubai -d rubai -c 'SELECT count(*) FROM information_schema.tables'`, очистить том, поднять стек, восстановить дамп, повторить запрос и сравнить.
+Keep the tunnel process running and the computer awake. Its free URL can change
+after reconnecting: update `api_origin` and the Sites `API_ORIGIN` environment
+value, preserving the existing secret `API_PROXY_TOKEN`. The Windows Redis
+community build is suitable for this private trial. Move the origin to a stable
+host and supported Redis deployment before general customer availability.
 
-## Диагностика
+## Hermes and Pi
 
-- `docker compose logs -f api web` — логи сервисов; секреты в логи не попадают.
-- `/readyz` отдаёт 503, пока PostgreSQL и Redis не готовы; `web` стартует после `api`.
-- Если туннель отдаёт ошибку, проверить локальные адреса выше: туннель сам по себе ничего не исправляет.
-- Kill switch Happ блокирует TCP вне туннеля: локальные проверки делать на loopback, не на Wi-Fi-адресе.
+Hermes and Pi are real text runtimes started by the isolated local broker in
+`apps/agents`. The broker uses temporary homes and disables filesystem, shell,
+browser, and other tools. Keep it bound to loopback. Configure
+`AGENT_RUNTIME_URL` and `AGENT_RUNTIME_TOKEN` only after installing and
+validating both runtimes; see [apps/agents/README.md](../apps/agents/README.md).
+
+## Operations
+
+```bash
+docker compose logs -f api web
+docker compose down                 # stop; retain database volume
+docker compose down -v              # destructive: remove database volume
+```
+
+Use the backup and restore scripts in `infra/scripts/` before data-changing
+maintenance. Keep dumps and credentials out of Git and the public site. The
+private rollout does not establish production readiness, payment readiness,
+or approval for public registration; those require separate acceptance and
+operational review.
